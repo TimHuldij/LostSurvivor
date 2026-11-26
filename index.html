@@ -43,9 +43,12 @@
         <span><kbd>Shift</kbd> Sprint</span>
         <span><kbd>Space</kbd> Jump</span>
         <span><kbd>E</kbd> Activate</span>
+        <span><kbd>1</kbd><kbd>2</kbd> Equip</span>
         <span><span class="mouse-icon" aria-hidden="true"></span> Left click to fire</span>
         <span><kbd>R</kbd> Reload</span>
         <span><kbd>F</kbd> Inspect</span>
+        <span><kbd>V</kbd> Camera</span>
+        <span><kbd>F2</kbd> Debug</span>
         <span><kbd>Esc</kbd> Pause</span>
       </footer>
     </div>
@@ -56,17 +59,40 @@
         <ol id="objective-list"></ol>
       </section>
       <div class="compass" aria-label="Heading"><span id="compass-left"></span><strong id="bearing">N</strong><span id="compass-right"></span></div>
+      <section id="debug-panel" class="debug-panel" aria-labelledby="debug-title" hidden>
+        <header><h2 id="debug-title">Debug</h2><kbd>F2</kbd></header>
+        <dl class="debug-coordinates" aria-label="Coordinates in meters">
+          <div><dt>X</dt><dd data-debug="x"></dd></div>
+          <div><dt>Y</dt><dd data-debug="y"></dd></div>
+          <div><dt>Z</dt><dd data-debug="z"></dd></div>
+        </dl>
+        <dl class="debug-stats">
+          <dt>FPS</dt><dd data-debug="fps">—</dd>
+          <dt>Frame time</dt><dd data-debug="frameTime">—</dd>
+          <dt>Current speed</dt><dd data-debug="speed"></dd>
+          <dt>Vertical speed</dt><dd data-debug="vertical"></dd>
+          <dt>Walk speed</dt><dd data-debug="walk"></dd>
+          <dt>Sprint speed</dt><dd data-debug="sprint"></dd>
+          <dt>Movement</dt><dd data-debug="state"></dd>
+          <dt>Camera</dt><dd data-debug="camera"></dd>
+        </dl>
+      </section>
       <div id="markers" aria-hidden="true"></div>
       <div id="reticle" class="reticle" aria-hidden="true"></div>
       <div id="prompt" class="prompt" hidden><kbd>E</kbd><span id="prompt-label">Activate relay</span></div>
       <p id="notification" class="notification" role="status"></p>
-      <section class="weapon-hud" aria-label="Pistol and ammunition">
-        <span class="weapon-name">G19</span>
-        <span class="ammo-count"><strong id="pistol-ammo"></strong><span id="pistol-capacity"></span></span>
-        <span id="pistol-status" role="status"></span>
+      <section class="equipment" aria-label="Inventory">
+        <ol id="inventory-slots" class="inventory-slots">
+          <li data-slot="1"><kbd>1</kbd><span>Hands</span></li>
+          <li data-slot="2"><kbd>2</kbd><span>Glock</span><span id="pistol-counter" class="ammo-count" hidden><strong id="pistol-ammo"></strong><span id="pistol-capacity"></span></span></li>
+        </ol>
+        <p id="equipment-status" role="status"></p>
       </section>
-      <button type="button" id="pause" class="pause"><kbd>Esc</kbd> Pause</button>
-      <p id="free-look-hint" class="free-look-hint" hidden>Drag or use arrow keys to look</p>
+      <div class="play-controls">
+        <p id="free-look-hint" class="free-look-hint" hidden>Drag or use arrow keys to look</p>
+        <p class="camera-control"><kbd>V</kbd><span id="camera-mode" role="status">First person</span></p>
+        <button type="button" id="pause" class="pause"><kbd>Esc</kbd> Pause</button>
+      </div>
     </div>
   </main>
   <script type="module" src="./src/main.js"></script>

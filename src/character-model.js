@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { roundedPart } from './model-geometry.js';
 
+export const THIGH_LENGTH = .417;
+export const SHIN_LENGTH = .391;
+export const HIP_HEIGHT = .869;
+export const ANKLE_HEIGHT = HIP_HEIGHT - THIGH_LENGTH - SHIN_LENGTH;
+
 export function createSurvivorBody() {
   const body = new THREE.Group();
   body.name = 'Relay yard survivor';
@@ -28,32 +33,49 @@ export function createSurvivorBody() {
   }
   roundedPart(body, trim, [.10, .035, .012], [-.07, 1.259, -.199], .004);
 
+  const upperBody = new THREE.Group();
+  upperBody.position.y = .89;
+  for (const part of [...body.children]) {
+    part.position.y -= upperBody.position.y;
+    upperBody.add(part);
+  }
+  body.add(upperBody);
+
   const limbs = [];
   for (const side of [-1, 1]) {
     const leg = new THREE.Group();
-    leg.position.set(side * .111, .869, 0);
+    leg.position.set(side * .111, HIP_HEIGHT, 0);
     roundedPart(leg, nylon, [.186, .46, .202], [0, -.207, .003], .045);
-    roundedPart(leg, nylon, [.158, .32, .171], [0, -.551, .019], .038);
-    roundedPart(leg, rubber, [.131, .125, .077], [0, -.40, -.086], .025);
-    roundedPart(leg, rubber, [.182, .18, .27], [0, -.756, -.037], .033);
-    roundedPart(leg, canvas, [.184, .041, .272], [0, -.84, -.037], .008);
+    const shin = new THREE.Group();
+    shin.position.y = -THIGH_LENGTH;
+    roundedPart(shin, nylon, [.158, .347, .171], [0, -.153, .011], .038);
+    roundedPart(shin, rubber, [.131, .125, .077], [0, .017, -.086], .025);
+    const foot = new THREE.Group();
+    foot.position.y = -SHIN_LENGTH;
+    roundedPart(foot, rubber, [.182, .126, .27], [0, .011, -.039], .026);
+    roundedPart(foot, canvas, [.184, .027, .272], [0, -.047, -.039], .008);
+    shin.add(foot);
+    leg.add(shin);
     body.add(leg);
 
     const arm = new THREE.Group();
-    arm.position.set(side * .26, 1.34, 0);
+    arm.position.set(side * .26, .45, 0);
     roundedPart(arm, cloth, [.177, .263, .182], [side * .019, -.113, .007], .055);
-    roundedPart(arm, cloth, [.133, .231, .154], [side * .029, -.34, -.049], .039).rotation.x = .29;
-    roundedPart(arm, rubber, [.124, .149, .146], [side * .03, -.475, -.088], .034);
-    body.add(arm);
-    limbs.push({ leg, arm, side });
+    const elbow = new THREE.Group();
+    elbow.position.set(side * .026, -.233, -.018);
+    roundedPart(elbow, cloth, [.133, .231, .154], [0, -.109, -.015], .039);
+    roundedPart(elbow, rubber, [.124, .135, .146], [0, -.238, -.022], .034);
+    arm.add(elbow);
+    upperBody.add(arm);
+    limbs.push({ leg, shin, foot, arm, elbow, side });
 
     if (side === 1) {
       const socket = new THREE.Group();
       socket.name = 'ItemSocket';
-      socket.position.set(.020, -.41, -.117);
+      socket.position.set(.005, -.188, -.097);
       socket.rotation.x = -.39;
-      arm.add(socket);
+      elbow.add(socket);
     }
   }
-  return { body, limbs };
+  return { body, limbs, upperBody };
 }
