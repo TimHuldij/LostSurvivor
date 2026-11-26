@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeTexture, randomSource } from './landscape.js';
 import { roundedPart } from './model-geometry.js';
 
 // All shapes are visual meshes in viewmodel coordinates.
@@ -19,15 +20,29 @@ function markings() {
   canvas.width = 256;
   canvas.height = 72;
   const context = canvas.getContext('2d');
-  context.fillStyle = '#b9c0b6';
-  context.font = 'bold 42px monospace';
-  context.fillText('G19', 10, 47);
-  context.fillStyle = '#8f9b96';
+  context.fillStyle = '#78807d';
+  context.font = 'bold 34px monospace';
+  context.fillText('G19', 12, 45);
+  context.fillStyle = '#636b68';
   context.font = '16px monospace';
-  context.fillText('RELAY', 121, 43);
+  context.fillText('RELAY', 106, 43);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   return new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false });
+}
+
+function slideFinish() {
+  const random = randomSource(2904);
+  const texture = makeTexture(256, 256, (context, width, height) => {
+    context.fillStyle = '#dedede';
+    context.fillRect(0, 0, width, height);
+    for (let mark = 0; mark < 2400; mark++) {
+      context.fillStyle = random() > .62 ? '#ffffff32' : '#11111112';
+      context.fillRect(random() * width, random() * height, 1 + random() * 9, 1);
+    }
+  });
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  return texture;
 }
 
 export function createPistolModel() {
@@ -37,10 +52,10 @@ export function createPistolModel() {
   const magazine = new THREE.Group();
   body.add(upper, magazine);
 
-  const blueSteel = new THREE.MeshStandardMaterial({ color: 0x434a4b, roughness: .36, metalness: .57 });
-  const polymer = new THREE.MeshStandardMaterial({ color: 0x343a34, roughness: .77 });
-  const inset = new THREE.MeshStandardMaterial({ color: 0x242b29, roughness: .79 });
-  const steelAccent = new THREE.MeshStandardMaterial({ color: 0x686d66, roughness: .46, metalness: .49 });
+  const blueSteel = new THREE.MeshStandardMaterial({ color: 0x494d50, roughness: .43, metalness: .49, map: slideFinish() });
+  const polymer = new THREE.MeshStandardMaterial({ color: 0x303235, roughness: .84 });
+  const inset = new THREE.MeshStandardMaterial({ color: 0x242629, roughness: .79 });
+  const steelAccent = new THREE.MeshStandardMaterial({ color: 0x51565a, roughness: .51, metalness: .42 });
   const sightPaint = new THREE.MeshStandardMaterial({ color: 0xe6e5bb, emissive: 0x857d38, emissiveIntensity: .16 });
   const accent = new THREE.MeshStandardMaterial({ color: 0x9aa16f, roughness: .57 });
 
@@ -85,6 +100,11 @@ export function createPistolModel() {
   roundedPart(upper, steelAccent, [.062, .006, .087], [0, .139, -.102], .002);
   roundedPart(upper, inset, [.036, .026, .039], [0, .15, -.466], .004);
   roundedPart(upper, sightPaint, [.014, .011, .005], [0, .151, -.445], .002);
+  const rearPlate = roundedPart(upper, inset, [.079, .066, .012], [0, .071, .153], .006);
+  rearPlate.rotation.x = .16;
+  for (const y of [-.018, -.008, .002]) {
+    roundedPart(rearPlate, steelAccent, [.054, .002, .003], [0, y, .006], .0008);
+  }
   for (const side of [-1, 1]) {
     roundedPart(upper, inset, [.031, .027, .039], [side * .033, .15, .112], .004);
     roundedPart(upper, sightPaint, [.012, .008, .004], [side * .034, .151, .133], .0015);
