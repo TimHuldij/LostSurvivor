@@ -9,6 +9,9 @@ const FIRST_PERSON_SPEEDS = Object.freeze({ walk: 3.8, sprint: 6.5 });
 const THIRD_PERSON_SPEEDS = Object.freeze({ walk: 2.2, sprint: 5.6 });
 const MAX_VISUAL_HEIGHT_OFFSET = .12;
 const EPSILON = 0.0001;
+const PLAYER_HITBOX_SIZE = new THREE.Vector3(.62, BODY_HEIGHT, .62);
+const PLAYER_HITBOX_OFFSET = new THREE.Vector3(0, BODY_HEIGHT / 2, 0);
+const PLAYER_HEALTH = 100;
 
 export function movementSpeeds(thirdPerson) {
   return thirdPerson ? THIRD_PERSON_SPEEDS : FIRST_PERSON_SPEEDS;
@@ -53,6 +56,7 @@ export class Player {
     this.gait = 0;
     this.motion = 0;
     this.airPose = 0;
+    this.health = PLAYER_HEALTH;
     this.visual.position.y = 0;
     this.upperBody?.rotation.set(0, 0, 0);
     this.root.rotation.y = this.yaw;
@@ -95,6 +99,16 @@ export class Player {
     if (!this.itemSocket || !item) return;
     item.traverse((object) => object.layers.set(PLAYER_BODY_LAYER));
     this.itemSocket.add(item);
+  }
+
+  getHitbox(target = new THREE.Box3()) {
+    return target.setFromCenterAndSize(this.position, PLAYER_HITBOX_SIZE).translate(PLAYER_HITBOX_OFFSET);
+  }
+
+  takeDamage(amount) {
+    if (this.health <= 0 || !Number.isFinite(amount) || amount <= 0) return false;
+    this.health = Math.max(0, this.health - amount);
+    return true;
   }
 
   step(delta, input, solids, cameraYaw = null) {

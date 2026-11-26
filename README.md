@@ -14,7 +14,9 @@ For design, implementation status and session continuity, read [GAME_DESIGN.md](
 - `src/inventory.js` and `src/pistol*.js` implement equipment and weapon presentation.
 - `src/door.js`, `src/world.js`, and `src/landscape.js` implement doors and the procedural map.
 - `src/models.js` and `models/` configure optional user-created models.
-- `tests/` contains door tests. `serve.mjs` is the local HTTP server.
+- `src/npc.js`, `src/navigation.js`, and `src/hitscan.js` implement ground-level patrol, door-aware navigation, sound investigation, hostile vision and hitscan combat.
+- `src/rifle-model.js` and `src/pickups.js` implement the procedural rifle model and ammunition boxes.
+- `tests/` contains door, NPC and pickup tests. `serve.mjs` is the local HTTP server.
 
 ## Run locally
 
@@ -34,15 +36,17 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080) in a desktop browser with We
 | E | Activate a relay, or open or close a door |
 | 1 | Holster the Glock |
 | 2 | Equip the Glock |
-| Hold left click | Fire when the Glock is equipped |
+| 3 | Equip the AK-47 |
+| B | Toggle AK-47 automatic/single fire |
+| Left click | Fire; hold for automatic fire |
 | Right click | Aim down sights |
-| R | Reload the Glock |
+| R | Reload the equipped weapon |
 | F | Inspect the equipped slot |
 | V | Switch between first person and third person |
 | F2 | Toggle debug stats |
 | Esc | Pause |
 
-If the browser blocks mouse capture, drag on the game or use the arrow keys to look. Use **Restart** from the pause screen to reset the yard.
+If the browser blocks mouse capture, drag on the game or use the arrow keys to look. Use **Restart** from the pause screen to reset the yard. Hostile NPC fire reduces the health meter; being downed opens the restart flow.
 
 ## Doors
 
@@ -74,7 +78,7 @@ Other options include `thickness`, `axis` (vertical Y-up), `openingSpeed`, `clos
 
 The optional `audio.onEvent` callback receives `{ type, position, angularVelocity, intensity, door }`. Event types include `handle`, `latch`, `locked`, `creak`, `open`, `close`, `slam`, and `collision`. Connect these events to positional sound assets when available.
 
-Run the door checks with `node --test tests/doors.test.js`.
+Run the checks with `node --test tests/*.test.js`.
 
 ## Game models
 
@@ -110,3 +114,9 @@ Player height defaults to 1.76 meters. Its mesh is centered at the feet, and `ya
 ## Camera and character
 
 [src/player.js](src/player.js) holds the persistent player body, collision, and movement state. In third person, the mouse orbits a follow camera, and the character turns in the direction of camera-relative movement. The camera keeps its focus near the character and pulls in around solid objects. The equipped Glock attaches to the body's `ItemSocket`. An imported body can provide its own node named `ItemSocket`.
+
+## Rifle ammunition
+
+The AK-47 starts with 30 rounds loaded and 90 in reserve. Face an ammunition box and press E to collect rifle rounds, up to a 180-round reserve. Boxes retain any rounds that do not fit and disappear when depleted. Restart resets the equipment and boxes. The rifle currently reuses the Glock animation framework and synthesized sound; shots use hitscan damage against NPCs, with walls and doors blocking shots.
+
+The yard includes a neutral survivor who investigates nearby gunfire and becomes hostile when shot, plus a hostile rifle carrier who patrols, detects the player, pursues, and attacks. Player health is shown in the HUD. Combat and perception are an initial prototype; cover, elevated navigation and fuller combat animation/audio are not implemented.

@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { Pistol } from './pistol.js';
+import { createRifleModel } from './rifle-model.js';
 
 const EMPTY = 1;
 const GLOCK = 2;
+const RIFLE = 3;
 
 export class Inventory {
   constructor(reducedMotion) {
@@ -16,18 +18,24 @@ export class Inventory {
     edge.position.set(2.5, 2, -3.2);
 
     this.pistol = new Pistol(reducedMotion);
-    this.scene.add(fill, key, edge, this.pistol.root);
+    this.rifle = new Pistol(reducedMotion, { model: createRifleModel, capacity: 30, shotInterval: .1, reserve: 90 });
+    this.rifle.flash.position.set(0, .04, -1.12);
+    this.fireMode = 'auto';
+    this.scene.add(fill, key, edge, this.pistol.root, this.rifle.root);
     this.reset();
   }
 
   get isPistol() { return this.slot === GLOCK; }
-  get action() { return this.isPistol ? this.pistol.action : null; }
+  get activeWeapon() { return this.slot === GLOCK ? this.pistol : this.slot === RIFLE ? this.rifle : null; }
+  get action() { return this.activeWeapon?.action ?? null; }
   get heldItem() {
-    return this.isPistol ? this.pistol.worldModel : null;
+    return this.activeWeapon?.worldModel ?? null;
   }
 
   reset() {
     this.pistol.reset();
+    this.rifle.reset();
+    this.fireMode = 'auto';
     this.slot = null;
     this.select(EMPTY);
   }
@@ -39,32 +47,35 @@ export class Inventory {
   }
 
   select(slot) {
-    if (slot === this.slot || (slot !== EMPTY && slot !== GLOCK)) return false;
-    this.pistol.cancelAction();
+    if (slot === this.slot || (slot !== EMPTY && slot !== GLOCK && slot !== RIFLE)) return false;
+    this.activeWeapon?.cancelAction();
     this.slot = slot;
     this.pistol.setEquipped(this.isPistol);
+    this.rifle.setEquipped(slot === RIFLE);
     this.update(0, 0);
     return true;
   }
 
   addLook(horizontal, vertical) {
-    this.pistol.addLook(horizontal, vertical);
+    this.activeWeapon?.addLook(horizontal, vertical);
   }
 
   inspect() {
-    if (this.isPistol) this.pistol.begin('inspect');
+    this.activeWeapon?.begin('inspect');
   }
 
   reload() {
-    if (this.isPistol) this.pistol.begin('reload');
+    this.activeWeapon?.begin('reload');
   }
 
   fire() {
-    if (this.isPistol) this.pistol.fire();
+    return this.activeWeapon?.fire() ?? false;
   }
 
   update(delta, speed, aiming = false, obstructionDistance = Infinity) {
-    this.pistol.setObstruction(obstructionDistance);
-    this.pistol.update(delta, speed, this.camera.aspect, this.isPistol && aiming);
+    for (const weapon of [this.pistol, this.rifle]) {
+      weapon.setObstruction(obstructionDistance);
+      weapon.update(delta, speed, this.camera.aspect, weapon === this.activeWeapon && aiming);
+    }
   }
 }

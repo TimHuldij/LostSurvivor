@@ -43,7 +43,7 @@
         <span><kbd>Shift</kbd> Sprint</span>
         <span><kbd>Space</kbd> Jump</span>
         <span><kbd>E</kbd> Interact</span>
-        <span><kbd>1</kbd><kbd>2</kbd> Equipment</span>
+        <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Equipment</span>
         <span><span class="mouse-icon" aria-hidden="true"></span> Hold left click to fire</span>
         <span><kbd>Right click</kbd> Aim</span>
         <span><kbd>R</kbd> Reload</span>
@@ -86,8 +86,13 @@
         <ol id="inventory-slots" class="inventory-slots">
           <li data-slot="1"><kbd>1</kbd><span>Empty</span></li>
           <li data-slot="2"><kbd>2</kbd><span>Glock</span><span id="pistol-counter" class="ammo-count" hidden><strong id="pistol-ammo"></strong><span id="pistol-capacity"></span></span></li>
+          <li data-slot="3"><kbd>3</kbd><span>AK-47</span><span id="rifle-counter" class="ammo-count" hidden><strong id="rifle-ammo"></strong><span id="rifle-reserve"></span></span></li>
         </ol>
         <p id="equipment-status" role="status"></p>
+      </section>
+      <section class="health-meter" aria-label="Player health">
+        <div><span>Health</span><strong id="player-health-value">100</strong></div>
+        <progress id="player-health" max="100" value="100" aria-label="Player health" aria-valuetext="100 of 100"></progress>
       </section>
       <div class="play-controls">
         <p id="free-look-hint" class="free-look-hint" hidden>Drag or use arrow keys to look</p>

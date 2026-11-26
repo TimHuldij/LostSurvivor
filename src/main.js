@@ -3,6 +3,10 @@ import { DebugPanel } from './debug-panel.js';
 import { DoorInteraction } from './door.js';
 import { Inventory } from './inventory.js';
 import { loadModels } from './models.js';
+import { NavigationGrid } from './navigation.js';
+import { NPC } from './npc.js';
+import { AmmoPickup } from './pickups.js';
+import { traceHitscan } from './hitscan.js';
 import { FirstPersonCamera, Player } from './player.js';
 import { THIRD_PERSON_MAX_PITCH, THIRD_PERSON_MIN_PITCH, ThirdPersonCamera } from './third-person-camera.js';
 import { createWorld } from './world.js';
@@ -15,11 +19,11 @@ const play = element('play');
 const restart = element('restart');
 const startupError = element('startup-error');
 
-const SLOT_KEYS = new Map([['Digit1', 1], ['Digit2', 2]]);
+const SLOT_KEYS = new Map([['Digit1', 1], ['Digit2', 2], ['Digit3', 3]]);
 const GAME_KEYS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight', 'Space', 'KeyE',
   'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-  'KeyF', 'KeyR', 'KeyV', 'F2',
+  'KeyF', 'KeyR', 'KeyV', 'KeyB', 'F2',
   ...SLOT_KEYS.keys(),
 ]);
 const FIXED_STEP = 1 / 120;
@@ -51,7 +55,32 @@ function runGame(renderer) {
   const world = createWorld();
   const player = new Player(world.spawn);
   world.scene.add(player.root);
+  const navigation = new NavigationGrid(world.solids);
+  const npcs = [
+    new NPC(world.scene, navigation, {
+      position: [-5, 0, 10], route: [[-5, 0, 10], [-7, 0, 4], [-4, 0, 1]],
+      disposition: 'neutral', color: 0x786a55,
+    }),
+    new NPC(world.scene, navigation, {
+      position: [0, 0, -7], yaw: Math.PI, route: [[0, 0, -7], [-8, 0, -5], [8, 0, -5]],
+      disposition: 'hostile', color: 0x76504a,
+    }),
+  ];
   const doors = new DoorInteraction(world.doors, world.solids);
+  const collisionBoxes = [];
+  function syncCollisionBoxes() {
+    collisionBoxes.length = 0;
+    collisionBoxes.push(...world.solids);
+    for (const door of world.doors) {
+      if (door.config.collision) collisionBoxes.push(...door.segments);
+    }
+  }
+  syncCollisionBoxes();
+  const pickups = [
+    new AmmoPickup(world.scene, [-12.4, .16, -.8]),
+    new AmmoPickup(world.scene, [4.1, 0, -14.2]),
+    new AmmoPickup(world.scene, [16.2, 0, 3.2]),
+  ];
 
   const view = new FirstPersonCamera(1);
   const thirdPerson = new ThirdPersonCamera(1);
@@ -102,6 +131,8 @@ function runGame(renderer) {
   const cameraMode = element('camera-mode');
   const freeLookHint = element('free-look-hint');
   const pistolAmmo = element('pistol-ammo');
+  const playerHealth = element('player-health');
+  const playerHealthValue = element('player-health-value');
   const pistolCounter = element('pistol-counter');
   const equipmentStatus = element('equipment-status');
   const slotRows = [...element('inventory-slots').children];
@@ -121,10 +152,12 @@ function runGame(renderer) {
   }
 
   function updateEquipmentStatus() {
-    const { pistol, action, isPistol } = inventory;
+    const { pistol, rifle, action, isPistol } = inventory;
+    element('rifle-ammo').textContent = String(rifle.ammo).padStart(2, '0');
+    element('rifle-reserve').textContent = ` / ${rifle.reserve}`;
     const ammo = String(pistol.ammo).padStart(2, '0');
     const status = action === 'reload' ? 'Reloading' :
-      action === 'inspect' ? 'Inspecting' : isPistol && pistol.ammo === 0 ? 'Empty · R to reload' : '';
+      action === 'inspect' ? 'Inspecting' : inventory.activeWeapon?.ammo === 0 ? 'Empty · R to reload' : inventory.slot === 3 ? `AK-47 · ${inventory.fireMode} · B to switch` : '';
     if (pistolAmmo.textContent !== ammo) pistolAmmo.textContent = ammo;
     if (equipmentStatus.textContent !== status) equipmentStatus.textContent = status;
   }
@@ -139,6 +172,7 @@ function runGame(renderer) {
       }
     }
     pistolCounter.hidden = !inventory.isPistol;
+    element('rifle-counter').hidden = inventory.slot !== 3;
     updateEquipmentStatus();
   }
 
@@ -159,7 +193,10 @@ function runGame(renderer) {
 
   function reset() {
     for (const door of world.doors) door.reset();
+    syncCollisionBoxes();
     player.reset();
+    for (const npc of npcs) npc.reset();
+    for (const pickup of pickups) pickup.reset();
     inventory.reset();
     showEquippedItem();
     input.yaw = player.yaw;
@@ -172,6 +209,45 @@ function runGame(renderer) {
     notificationUntil = 0;
     prompt.hidden = true;
     reticle.classList.remove('ready');
+    mode = 'menu';
+    play.hidden = false;
+    restart.hidden = true;
+    element('menu-title').innerHTML = 'Lost<br><span>Survivor</span>';
+    element('menu-description').textContent = 'Bring three offline relays back online.';
+    element('play-label').textContent = play.disabled ? 'Loading yard…' : 'Enter the yard';
+    updatePlayerHealth();
+  }
+
+  function updatePlayerHealth() {
+    playerHealth.value = player.health;
+    playerHealth.setAttribute('aria-valuetext', `${player.health} of 100`);
+    playerHealthValue.textContent = String(player.health);
+  }
+
+  function playerDown() {
+    if (mode !== 'playing') return;
+    mode = 'down';
+    fireHeld = false;
+    aiming = false;
+    keys.clear();
+    jumpQueued = false;
+    if (document.pointerLockElement === canvas) document.exitPointerLock();
+    menu.hidden = false;
+    hud.hidden = true;
+    restart.hidden = false;
+    play.hidden = true;
+    element('menu-title').textContent = 'Down';
+    element('menu-description').textContent = 'You were killed. Restart the relay yard to try again.';
+    needsRender = true;
+  }
+
+  function fireWeapon() {
+    if (!inventory.fire()) return;
+    gameplayCamera.updateMatrixWorld();
+    const direction = gameplayCamera.getWorldDirection(new THREE.Vector3());
+    const hit = traceHitscan(gameplayCamera.position, direction, npcs, collisionBoxes);
+    hit?.target.takeDamage(inventory.slot === 3 ? 34 : 25, player);
+    for (const npc of npcs) npc.hear(player.position, 18, collisionBoxes, world.doors);
   }
 
   function updateCapture() {
@@ -200,6 +276,7 @@ function runGame(renderer) {
     mode = 'playing';
     debugPanel.resetTiming();
     inventory.pistol.audio.unlock();
+    inventory.rifle.audio.unlock();
     menu.hidden = true;
     hud.hidden = false;
     document.activeElement?.blur();
@@ -244,7 +321,7 @@ function runGame(renderer) {
         .addScaledVector(viewRight, right)
         .addScaledVector(viewDown, down);
       viewRay.set(viewOrigin, viewDirection);
-      for (const solid of [...world.solids, ...doors.collisionBoxes]) {
+      for (const solid of collisionBoxes) {
         const intersection = viewRay.intersectBox(solid, obstructionHit);
         if (intersection) nearest = Math.min(nearest, viewOrigin.distanceTo(intersection));
       }
@@ -265,7 +342,7 @@ function runGame(renderer) {
       if (distance >= nearestDistance || offset.normalize().dot(aim) < .71) continue;
 
       lineOfSight.set(eye, offset);
-      const obstructed = [...world.solids, ...doors.collisionBoxes].some((box) => {
+      const obstructed = collisionBoxes.some((box) => {
         const intersection = lineOfSight.intersectBox(box, hit);
         return intersection && eye.distanceToSquared(intersection) < (distance - .07) ** 2;
       });
@@ -274,6 +351,10 @@ function runGame(renderer) {
       nearestDistance = distance;
     }
     return nearest;
+  }
+
+  function focusedPickup() {
+    return pickups.find(pickup => pickup.focus(gameplayCamera, player, collisionBoxes));
   }
 
   function activateRelay() {
@@ -316,14 +397,16 @@ function runGame(renderer) {
     }
 
     const door = doors.focus(gameplayCamera, player);
-    const relay = door ? null : nearbyRelay();
-    prompt.hidden = !door && !relay;
-    reticle.classList.toggle('ready', Boolean(relay || door));
-    reticle.classList.toggle('dimmed', Boolean(inventory.action) && !relay && !door);
+    const pickup = door ? null : focusedPickup();
+    const relay = door || pickup ? null : nearbyRelay();
+    prompt.hidden = !door && !relay && !pickup;
+    reticle.classList.toggle('ready', Boolean(relay || door || pickup));
+    reticle.classList.toggle('dimmed', Boolean(inventory.action) && !relay && !door && !pickup);
     if (door) {
       const opening = door.target !== null ? Math.abs(door.target) > .03 : Math.abs(door.angle) > .015;
       promptLabel.textContent = door.locked ? 'Locked' : opening ? 'Close' : 'Open';
-    } else if (relay) promptLabel.textContent = `Activate ${relay.label.toLowerCase()} relay`;
+    } else if (pickup) promptLabel.textContent = 'Collect rifle ammunition';
+    else if (relay) promptLabel.textContent = `Activate ${relay.label.toLowerCase()} relay`;
     if (notificationUntil && now > notificationUntil) {
       notification.textContent = '';
       notificationUntil = 0;
@@ -347,6 +430,7 @@ function runGame(renderer) {
         input.jump = jumpQueued;
         jumpQueued = false;
         doors.step(FIXED_STEP, player);
+        syncCollisionBoxes();
         previousPlayerPosition.copy(player.position);
         const playerYaw = orbiting ? thirdPerson.yaw : input.yaw;
         intendedPlayerPosition.set(input.side, 0, -input.forward);
@@ -354,15 +438,18 @@ function runGame(renderer) {
         intendedPlayerPosition.applyAxisAngle(THREE.Object3D.DEFAULT_UP, playerYaw)
           .multiplyScalar((input.sprint ? 5.6 : 3.8) * FIXED_STEP).add(previousPlayerPosition);
         for (const door of world.doors) door.push(previousPlayerPosition, { position: intendedPlayerPosition });
-        player.step(FIXED_STEP, input, [...world.solids, ...doors.collisionBoxes], orbiting ? thirdPerson.yaw : null);
+        player.step(FIXED_STEP, input, collisionBoxes, orbiting ? thirdPerson.yaw : null);
+        for (const npc of npcs) npc.update(FIXED_STEP, world.doors, player, collisionBoxes);
         accumulator -= FIXED_STEP;
       }
+      updatePlayerHealth();
+      if (player.health <= 0) playerDown();
       if (player.position.y < -8) reset();
-      if (orbiting) thirdPerson.update(player, input.yaw, pitch, [...world.solids, ...doors.collisionBoxes], delta);
-      view.update(player, pitch, delta, orbiting ? thirdPerson.yaw : input.yaw, inventory.pistol.cameraRecoil);
-      const obstruction = !orbiting && inventory.isPistol ? nearestViewObstruction() : Infinity;
+      if (orbiting) thirdPerson.update(player, input.yaw, pitch, collisionBoxes, delta);
+      view.update(player, pitch, delta, orbiting ? thirdPerson.yaw : input.yaw, (inventory.activeWeapon?.cameraRecoil ?? 0));
+      const obstruction = !orbiting && inventory.activeWeapon ? nearestViewObstruction() : Infinity;
       inventory.update(delta, player.speed, aiming && !orbiting, obstruction);
-      if (fireHeld) inventory.fire();
+      if (fireHeld && (inventory.slot !== 3 || inventory.fireMode === 'auto')) fireWeapon();
       updateEquipmentStatus();
       updateHUD(now);
       debugPanel.update(now, player, orbiting);
@@ -408,10 +495,19 @@ function runGame(renderer) {
       const door = doors.focus(gameplayCamera, player);
       if (door) {
         door.interact(player);
-      } else activateRelay();
+      } else {
+        const pickup = focusedPickup();
+        if (pickup) {
+          const amount = pickup.collect(inventory);
+          notification.textContent = amount ? `Collected ${amount} rifle rounds.` : 'Rifle ammunition full.';
+          notificationUntil = performance.now() + 2500;
+          if (amount) inventory.pistol.audio.play('seat');
+        } else activateRelay();
+      }
     }
     if (event.code === 'KeyR') inventory.reload();
     if (event.code === 'KeyF') inventory.inspect();
+    if (event.code === 'KeyB' && inventory.slot === 3) inventory.fireMode = inventory.fireMode === 'auto' ? 'single' : 'auto';
     if (event.code === 'KeyV') toggleCamera();
     if (event.code === 'F2') debugPanel.toggle();
     const slot = SLOT_KEYS.get(event.code);
@@ -428,7 +524,7 @@ function runGame(renderer) {
   document.addEventListener('mousedown', (event) => {
     if (mode !== 'playing') return;
     if (event.button === 0 && locked) {
-      inventory.fire();
+      fireWeapon();
       fireHeld = true;
     }
     if (event.button === 2) aiming = true;
@@ -458,7 +554,7 @@ function runGame(renderer) {
   canvas.addEventListener('pointerup', (event) => {
     if (mode === 'playing' && !locked && event.button === 0 && event.pointerType === 'mouse' &&
         event.pointerId === dragPointer?.id && !dragPointer.moved) {
-      inventory.fire();
+      fireWeapon();
     }
   });
   canvas.addEventListener('lostpointercapture', () => { dragPointer = null; });
@@ -474,6 +570,7 @@ function runGame(renderer) {
   renderer.setAnimationLoop(frame);
 
   loadModels(player, world).then((failures) => {
+    syncCollisionBoxes();
     if (failures.length) {
       for (const { reason } of failures) console.warn('Could not load a configured model:', reason);
       startupError.textContent = 'A configured model failed to load. The yard is still playable.';

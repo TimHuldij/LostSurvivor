@@ -98,7 +98,9 @@ function muzzleFlash() {
 }
 
 export class Pistol {
-  constructor(reducedMotion) {
+  constructor(reducedMotion, { model = createPistolModel, capacity = CAPACITY, shotInterval = SHOT_INTERVAL, reserve = Infinity } = {}) {
+    this.shotInterval = shotInterval;
+    this.initialReserve = reserve;
     this.audio = new PistolAudio();
     this.reducedMotion = reducedMotion;
     this.root = new THREE.Group();
@@ -107,7 +109,7 @@ export class Pistol {
     this.lookLag = new THREE.Vector2();
     this.clock = 0;
 
-    const { body, upper, magazine } = createPistolModel();
+    const { body, upper, magazine } = model();
     this.worldModel = body.clone(true);
     this.worldModel.scale.setScalar(.34);
     this.viewmodel = body;
@@ -132,12 +134,13 @@ export class Pistol {
     this.viewmodel.add(this.flash);
     this.root.add(this.viewmodel);
     this.root.visible = false;
-    this.capacity = CAPACITY;
+    this.capacity = capacity;
     this.reset();
   }
 
   reset() {
     this.ammo = this.capacity;
+    this.reserve = this.initialReserve;
     this.cancelAction();
     this.stride = 0;
     this.sprint = 0;
@@ -178,7 +181,7 @@ export class Pistol {
 
   fire() {
     if (!this.equipped || this.action || this.cooldown > 0) return;
-    this.cooldown = SHOT_INTERVAL;
+    this.cooldown = this.shotInterval;
     if (this.ammo === 0) {
       this.audio.play('dry');
       return;
@@ -187,10 +190,12 @@ export class Pistol {
     this.shotAge = 0;
     this.cameraRecoil = Math.min(this.cameraRecoil + .018, .055);
     this.audio.play('fire');
+    return true;
   }
 
   begin(action) {
     if (!this.equipped || this.action || !Object.hasOwn(ACTIONS, action)) return;
+    if (action === 'reload' && (this.ammo === this.capacity || this.reserve <= 0)) return;
     this.action = action;
     this.elapsed = 0;
   }
@@ -212,7 +217,11 @@ export class Pistol {
         if (before < time && time <= this.elapsed) this.audio.play(cue);
       }
       if (this.elapsed >= animation.duration) {
-        if (this.action === 'reload') this.ammo = this.capacity;
+        if (this.action === 'reload') {
+          const amount = Math.min(this.capacity - this.ammo, this.reserve);
+          this.ammo += amount;
+          this.reserve -= amount;
+        }
         this.action = null;
       }
     }

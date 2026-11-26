@@ -13,9 +13,11 @@ Lost Survivor is a browser-based survival game prototype. The current playable s
 
 ## Architecture and files
 
-The game uses JavaScript modules, HTML, CSS, Three.js, and a local Node static server. There is no separate game engine or rigid-body physics library. `src/main.js` connects input, simulation, UI, camera and rendering. `src/player.js` handles character collision and movement. `src/third-person-camera.js` follows the character. `src/inventory.js` and `src/pistol*.js` handle equipment. `src/door.js` implements hinged door behavior. `src/world.js` creates the yard and collisions. `src/landscape.js` generates scenery. `src/models.js` loads configured glTF models. `index.html` and `styles.css` define the UI. See DEVELOPMENT.md for dependencies and limitations.
+The game uses JavaScript modules, HTML, CSS, Three.js, and a local Node static server. There is no separate game engine or rigid-body physics library. `src/main.js` connects input, simulation, UI, camera and rendering. `src/player.js` handles character collision and movement. `src/third-person-camera.js` follows the character. `src/inventory.js`, `src/pistol*.js`, and `src/rifle-model.js` handle equipment. `src/pickups.js` implements rifle ammunition boxes. `src/door.js` implements hinged door behavior. `src/world.js` creates the yard and collisions. `src/landscape.js` generates scenery. `src/models.js` loads configured glTF models. `index.html` and `styles.css` define the UI. See DEVELOPMENT.md for dependencies and limitations.
 
-Run `npm install` and `npm run dev`, then open http://127.0.0.1:8080. Run `node --test tests/doors.test.js` and relevant browser playtests. There is no build script.
+`src/npc.js` and `src/navigation.js` are the initial, incomplete NPC and static-grid navigation foundation.
+
+Run `npm install` and `npm run dev`, then open http://127.0.0.1:8080. Run `node --test tests/*.test.js` and relevant browser playtests. There is no build script.
 
 ## Session continuity
 

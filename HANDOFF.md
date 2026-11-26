@@ -2,22 +2,32 @@
 
 Last updated 2026-11-26.
 
-## Current request and objective
+## Current request and state
 
-The latest request asked for persistent, accurate repository documentation and an AI session continuity protocol. The objective is to make the repository sufficient for a new agent to understand the current game without prior chat history.
+Continue the user's phased FPS expansion without discarding the relay-yard slice or existing work. Preserve the handless first-person equipment convention, existing controls, doors, Glock, rifle and objective loop. The immediate NPC foundation tasks from the previous checkpoint—door traversal, hitscan, perception, hostile attacks and player health—are implemented; end-to-end combat still needs live playtesting.
 
-## Current state
+## Checkpoint
 
-The documentation audit and requested files have been created. No gameplay implementation was requested in this session. Source inspection confirms the relay yard, handless Glock, first/third-person movement, and single-press doors. The earlier hold-to-control door design was explicitly replaced by one E press to open and one to close.
+- `src/navigation.js`, `src/npc.js`, `src/main.js`: NPCs use the static ground-level grid, investigate nearby gunfire, navigate around dynamic door obstacles, open unlocked doors and cross them. A neutral survivor becomes hostile when shot; a rifle-carrying hostile patrols, detects the player using configurable range/FOV and line of sight, pursues and attacks with cadence-limited hitscan. World and door boxes block vision and fire. NPC reset restores its spawn, disposition and health.
+- `src/player.js`, `src/main.js`, `index.html`, `styles.css`: player health is 100, represented by a world-space hitbox and HUD meter. Lethal damage opens a down/restart flow.
+- `src/hitscan.js`: shared nearest-first ray resolver handles world/door blockers and living targets. Player and NPC weapon fire use it.
+- `src/inventory.js`, `src/pistol.js`, `src/rifle-model.js`, `src/pickups.js`: handless Glock and procedural AK-style rifle, weapon states and rifle ammunition boxes remain as previously documented in `DEVELOPMENT.md` and `README.md`.
+- The worktree was already dirty before this continuation. Preserve unrelated/pre-existing changes; do not reset or revert them.
 
-Files created in this documentation task: `AGENTS.md`, `GAME_DESIGN.md`, `DEVELOPMENT.md`, and `HANDOFF.md`. `README.md` was updated with project overview and links. Existing working-tree changes predate this documentation task and must be preserved. At the audit they included modified `index.html`, `src/main.js`, and `src/world.js`, plus untracked `src/door.js` and `tests/`.
+## Validation
 
-Technical decisions: the current game is Three.js with custom fixed-step collision, not a standalone engine. First-person equipment must remain handless. Door interactions are single-press. Sources determine actual implementation, while newer user instructions take precedence over this handoff.
+- `node --test tests/*.test.js`: 28 tests pass, covering doors, navigation, NPC hearing and door traversal, hitscan blockers, hostile sight and attack cadence, neutral-to-hostile behavior, player health/hitbox and pickups.
+- `node --check src/npc.js`, `node --check src/main.js`, `node --check src/player.js`, and `git diff --check` pass.
+- Browser smoke on the existing local server loaded the game, entered play and confirmed the visible health meter at 100 with no startup error. The hostile engagement, taking damage and death/restart flow were not driven through a full live browser playtest.
+- There is no build or lint script. The game's actual combat quality, enemy placement, wall/door visibility and down/restart UX still need interactive validation.
 
-## Validation and remaining work
+## Remaining work
 
-`node --test tests/doors.test.js` passed all 13 tests during this audit. The documentation links and `git diff --check` were checked. No full browser regression was run for this documentation-only task. There is no build script. No new defects were confirmed. There is no authorized unfinished feature. The next action is to follow the user's next request.
+1. Play the game and verify hostile NPC detection, pursuit, blocker-aware fire, player damage, down state and restart. Adjust positioning or AI only based on observed behavior.
+2. Verify interactions and existing first-person/third-person weapon behavior after these changes.
+3. Consider further NPC improvements only after validating the prototype: cover, richer use/fire animations and audio, NPC collision with door swings, and elevated navigation.
+4. The broader requested expansion remains partial: more shared equippable item types, resources and environmental interactions, connected interiors/world expansion, positional audio, weapon-specific polish and performance work.
 
 ## NEXT AI AGENT PROMPT
 
-Read AGENTS.md, README.md, GAME_DESIGN.md, DEVELOPMENT.md, and this handoff. Inspect the working tree and current source before making changes. The previous agent created the continuity documents so future work can proceed without chat history. The playable prototype is a Three.js relay yard with custom fixed-step collision, first/third-person cameras, a handless Glock, and single-press E doors. Key code is in src/main.js, src/player.js, src/third-person-camera.js, src/inventory.js, src/pistol.js, src/door.js, and src/world.js. Preserve existing uncommitted work, invisible first-person hands, movement, camera, equipment, relays, and single-press doors. There is no pending approved feature. Follow the latest user request, update the documentation and this prompt as work progresses, run node --test tests/doors.test.js when relevant, and perform browser checks for affected gameplay. Do not claim unperformed validation.
+Read `AGENTS.md`, `README.md`, `GAME_DESIGN.md`, `DEVELOPMENT.md` and this handoff. Inspect the worktree and preserve its existing changes. First playtest the new NPC combat and player down/restart flow in a browser; confirm a hostile can see and damage the player, walls/doors block its fire, and restart restores the player and NPCs. Also regression-check the handless weapon controls, doors, relay objectives and pickup flow. Fix only issues reproduced during testing, then run `node --test tests/*.test.js` and update all affected documentation. After verified combat, continue the still-partial larger request—additional equippable items/resources/interactions, connected world, audio and performance—without removing working gameplay or claiming untested features are complete.
