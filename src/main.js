@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { loadModels } from './models.js';
+import { Pistol } from './pistol.js';
 import { FirstPersonCamera, Player } from './player.js';
 import { createWorld } from './world.js';
 
@@ -11,9 +12,10 @@ const play = element('play');
 const restart = element('restart');
 const startupError = element('startup-error');
 
-const MOVE_KEYS = new Set([
+const GAME_KEYS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight', 'Space', 'KeyE',
   'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+  'KeyF', 'KeyR', 'KeyI',
 ]);
 const FIXED_STEP = 1 / 120;
 const CARDINALS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -46,6 +48,8 @@ function runGame(renderer) {
   world.scene.add(player.root);
 
   const view = new FirstPersonCamera(1);
+  const pistol = new Pistol(view.reducedMotion);
+  player.setHeldItem(pistol.worldModel);
   const menuCamera = new THREE.PerspectiveCamera(55, 1, .05, 215);
   menuCamera.position.set(-11.4, 4.6, 19.1);
   menuCamera.lookAt(5.6, 2.3, -11);
@@ -77,6 +81,9 @@ function runGame(renderer) {
   const compassLeft = element('compass-left');
   const compassRight = element('compass-right');
   const freeLookHint = element('free-look-hint');
+  const pistolAmmo = element('pistol-ammo');
+  const pistolStatus = element('pistol-status');
+  element('pistol-capacity').textContent = `/ ${pistol.capacity}`;
 
   function resize() {
     const { clientWidth: width, clientHeight: height } = canvas;
@@ -87,7 +94,16 @@ function runGame(renderer) {
       camera.aspect = aspect;
       camera.updateProjectionMatrix();
     }
+    pistol.resize(aspect);
     needsRender = true;
+  }
+
+  function updatePistolHUD() {
+    const ammo = String(pistol.ammo).padStart(2, '0');
+    const status = pistol.action === 'reload' ? 'Reloading' :
+      pistol.action === 'inspect' ? 'Inspecting' : pistol.ammo === 0 ? 'Empty · R to reload' : '';
+    if (pistolAmmo.textContent !== ammo) pistolAmmo.textContent = ammo;
+    if (pistolStatus.textContent !== status) pistolStatus.textContent = status;
   }
 
   function updateObjectives() {
@@ -107,6 +123,8 @@ function runGame(renderer) {
 
   function reset() {
     player.reset();
+    pistol.reset();
+    updatePistolHUD();
     input.yaw = player.yaw;
     pitch = -.035;
     view.reset(player, pitch);
@@ -140,6 +158,7 @@ function runGame(renderer) {
 
   function begin() {
     mode = 'playing';
+    pistol.audio.unlock();
     menu.hidden = true;
     hud.hidden = false;
     document.activeElement?.blur();
@@ -222,6 +241,7 @@ function runGame(renderer) {
     const relay = nearbyRelay();
     prompt.hidden = !relay;
     reticle.classList.toggle('ready', Boolean(relay));
+    reticle.classList.toggle('dimmed', Boolean(pistol.action) && !relay);
     if (relay) promptLabel.textContent = `Activate ${relay.label.toLowerCase()} relay`;
     if (notificationUntil && now > notificationUntil) {
       notification.textContent = '';
@@ -249,10 +269,18 @@ function runGame(renderer) {
       }
       if (player.position.y < -8) reset();
       view.update(player, pitch, delta);
+      pistol.update(delta, player.speed);
+      updatePistolHUD();
       updateHUD(now);
     }
     if (mode === 'playing' || needsRender) {
       renderer.render(world.scene, mode === 'menu' ? menuCamera : view.camera);
+      if (mode !== 'menu') {
+        renderer.autoClear = false;
+        renderer.clearDepth();
+        renderer.render(pistol.scene, pistol.camera);
+        renderer.autoClear = true;
+      }
       needsRender = false;
     }
   }
@@ -276,28 +304,43 @@ function runGame(renderer) {
       pause();
       return;
     }
-    if (!MOVE_KEYS.has(event.code)) return;
+    if (!GAME_KEYS.has(event.code)) return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     event.preventDefault();
     keys.add(event.code);
     if (event.repeat) return;
     if (event.code === 'Space') jumpQueued = true;
     if (event.code === 'KeyE') activateRelay();
+    if (event.code === 'KeyF') pistol.fire();
+    if (event.code === 'KeyR') pistol.begin('reload');
+    if (event.code === 'KeyI') pistol.begin('inspect');
   });
   document.addEventListener('keyup', (event) => keys.delete(event.code));
   document.addEventListener('mousemove', (event) => {
     if (mode === 'playing' && locked) look(event.movementX * .0023, event.movementY * .0023);
   });
+  document.addEventListener('mousedown', (event) => {
+    if (mode === 'playing' && locked && event.button === 0) pistol.fire();
+  });
   canvas.addEventListener('pointerdown', (event) => {
     if (mode !== 'playing' || locked || event.button !== 0) return;
-    dragPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    dragPointer = {
+      id: event.pointerId, x: event.clientX, y: event.clientY,
+      startX: event.clientX, startY: event.clientY, moved: false,
+    };
     canvas.setPointerCapture(event.pointerId);
   });
   canvas.addEventListener('pointermove', (event) => {
     if (mode !== 'playing' || locked || event.pointerId !== dragPointer?.id) return;
+    dragPointer.moved ||= Math.hypot(event.clientX - dragPointer.startX, event.clientY - dragPointer.startY) >= 6;
     look((event.clientX - dragPointer.x) * .004, (event.clientY - dragPointer.y) * .004);
     dragPointer.x = event.clientX;
     dragPointer.y = event.clientY;
+  });
+  canvas.addEventListener('pointerup', (event) => {
+    if (mode === 'playing' && !locked && event.pointerId === dragPointer?.id && !dragPointer.moved) {
+      pistol.fire();
+    }
   });
   canvas.addEventListener('lostpointercapture', () => { dragPointer = null; });
   play.addEventListener('click', begin);

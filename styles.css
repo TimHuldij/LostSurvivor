@@ -103,6 +103,14 @@ kbd { display: inline-grid; place-items: center; min-width: 1.28rem; height: 1.4
 .reticle::before { width: 13px; height: 1px; left: 2px; top: 8px; }
 .reticle::after { width: 1px; height: 13px; left: 8px; top: 2px; }
 .reticle.ready { color: var(--accent); }
+.reticle.dimmed { opacity: .22; }
+.weapon-hud { position: absolute; left: var(--inset); bottom: var(--inset); display: grid; gap: .18rem; min-width: 7.5rem; padding: .55rem .8rem; background: var(--panel); border: 1px solid var(--line); }
+.weapon-name, .ammo-count { font: 600 .82rem/1.2 ui-monospace, Consolas, monospace; letter-spacing: .08em; }
+.weapon-name { color: var(--muted); }
+.ammo-count { display: flex; align-items: baseline; gap: .4rem; }
+.ammo-count strong { font-size: 1.55rem; color: var(--accent); }
+#pistol-status { color: var(--amber); font-size: .82rem; }
+#pistol-status:empty { display: none; }
 .marker { position: absolute; display: grid; justify-items: center; gap: .35rem; min-width: 3.25rem; transform: translate(-50%, -50%); text-shadow: 0 2px 4px #000, 0 0 8px #000; color: var(--amber); letter-spacing: .02em; }
 .marker::before { content: ""; display: block; width: .58rem; height: .58rem; border: 2px solid currentColor; box-shadow: 0 1px 4px #000; transform: rotate(45deg); }
 .prompt, .notification { position: absolute; left: 50%; transform: translateX(-50%); width: max-content; max-width: 85vw; background: var(--panel); border: 1px solid var(--line); padding: .6rem .85rem; text-align: center; }
@@ -110,7 +118,7 @@ kbd { display: inline-grid; place-items: center; min-width: 1.28rem; height: 1.4
 .notification { bottom: 4.2rem; margin: 0; color: var(--accent); font-weight: 650; }
 .notification:empty { display: none; }
 .pause { pointer-events: auto; position: absolute; right: var(--inset); bottom: var(--inset); display: flex; gap: .45rem; align-items: center; padding: .45rem .65rem; background: var(--panel); border: 1px solid var(--line); color: var(--paper); font-size: .875rem; }
-.free-look-hint { position: absolute; left: var(--inset); bottom: var(--inset); margin: 0; max-width: 45%; font-size: .875rem; background: var(--panel); padding: .45rem .6rem; }
+.free-look-hint { position: absolute; right: var(--inset); bottom: calc(var(--inset) + 2.75rem); margin: 0; max-width: 45%; font-size: .875rem; background: var(--panel); padding: .45rem .6rem; }
 
 @media (max-width: 660px) {
   .menu { background: linear-gradient(90deg, #0d1813ed, #0d18134f), linear-gradient(0deg, #0b140fef, transparent 34%); }

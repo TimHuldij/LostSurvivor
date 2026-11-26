@@ -18,11 +18,18 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080) in a desktop browser with We
 | Shift + W | Sprint |
 | Space | Jump |
 | E | Activate a nearby relay while facing its panel |
+| Left click or F | Fire the G19 |
+| R | Reload |
+| I | Inspect |
 | Esc | Pause |
 
 If the browser blocks mouse capture, drag on the game or use the arrow keys to look. Use **Restart** from the pause screen to reset the yard.
 
-## Add your Blender models
+## Game models
+
+The full-body survivor, G19, and first-person hands are built in JavaScript. The pistol has a reload animation with synchronized sound cues and a separate inspect animation. Sound effects are synthesized in the browser.
+
+### Optional model imports
 
 | Folder | Contents |
 | --- | --- |
@@ -32,7 +39,7 @@ If the browser blocks mouse capture, drag on the game or use the arrow keys to l
 
 1. In Blender, export the model with **File → Export → glTF 2.0**. Use **GLB** for a self-contained file. Keep Draco compression disabled. For a rigged character, include its animations and use in-place movement clips.
 2. Put the exported file in its folder and set its path in [models/model-config.js](models/model-config.js). Paths are relative to `models/`. For a separate `.gltf` export, keep its binary and textures in their exported paths.
-3. Reload the game. An unconfigured player uses the included placeholder body.
+3. Reload the game. An unconfigured player uses the built-in survivor model.
 
 ```js
 export const models = {
@@ -51,4 +58,4 @@ Player height defaults to 1.76 meters. Its mesh is centered at the feet, and `ya
 
 ## Camera and character
 
-[src/player.js](src/player.js) holds the persistent player body, collision, and movement state. The first-person camera follows that state independently and leaves the body render layer out of view. A future third-person camera can follow the same player root and render `PLAYER_BODY_LAYER`.
+[src/player.js](src/player.js) holds the persistent player body, collision, and movement state. The first-person camera leaves the body render layer out of view. The pistol attaches to the body's `ItemSocket`, which a future third-person camera can render along with `PLAYER_BODY_LAYER`. An imported body can provide its own node named `ItemSocket`.

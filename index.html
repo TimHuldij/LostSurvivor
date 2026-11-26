@@ -43,6 +43,9 @@
         <span><kbd>Shift</kbd> Sprint</span>
         <span><kbd>Space</kbd> Jump</span>
         <span><kbd>E</kbd> Activate</span>
+        <span><span class="mouse-icon" aria-hidden="true"></span> Click to fire</span>
+        <span><kbd>R</kbd> Reload</span>
+        <span><kbd>I</kbd> Inspect</span>
         <span><kbd>Esc</kbd> Pause</span>
       </footer>
     </div>
@@ -57,6 +60,11 @@
       <div id="reticle" class="reticle" aria-hidden="true"></div>
       <div id="prompt" class="prompt" hidden><kbd>E</kbd><span id="prompt-label">Activate relay</span></div>
       <p id="notification" class="notification" role="status"></p>
+      <section class="weapon-hud" aria-label="Pistol and ammunition">
+        <span class="weapon-name">G19</span>
+        <span class="ammo-count"><strong id="pistol-ammo"></strong><span id="pistol-capacity"></span></span>
+        <span id="pistol-status" role="status"></span>
+      </section>
       <button type="button" id="pause" class="pause"><kbd>Esc</kbd> Pause</button>
       <p id="free-look-hint" class="free-look-hint" hidden>Drag or use arrow keys to look</p>
     </div>

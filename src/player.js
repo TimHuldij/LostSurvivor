@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createSurvivorBody } from './character-model.js';
 
 export const PLAYER_BODY_LAYER = 1;
 const BODY_HEIGHT = 1.76;
@@ -7,42 +8,6 @@ const STEP_HEIGHT = 0.24;
 const WALK_SPEED = 3.8;
 const RUN_SPEED = 6.5;
 const EPSILON = 0.0001;
-
-function placeholderBody() {
-  const body = new THREE.Group();
-  const jacket = new THREE.MeshStandardMaterial({ color: 0x697f4d, roughness: 0.95 });
-  const pants = new THREE.MeshStandardMaterial({ color: 0x303c33, roughness: 0.95 });
-  const gear = new THREE.MeshStandardMaterial({ color: 0x202b24, roughness: 0.95 });
-  const visor = new THREE.MeshStandardMaterial({ color: 0xe3bb76, roughness: 0.46 });
-
-  function piece(parent, material, size, position) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), material);
-    mesh.position.set(...position);
-    parent.add(mesh);
-  }
-
-  piece(body, jacket, [.45, .53, .29], [0, 1.13, 0]);
-  piece(body, gear, [.34, .43, .17], [0, 1.15, .21]);
-  piece(body, gear, [.3, .31, .28], [0, 1.55, 0]);
-  piece(body, visor, [.26, .1, .025], [0, 1.57, -.151]);
-
-  const limbs = [];
-  for (const side of [-1, 1]) {
-    const leg = new THREE.Group();
-    leg.position.set(side * .115, .87, 0);
-    piece(leg, pants, [.19, .71, .20], [0, -.37, 0]);
-    piece(leg, gear, [.2, .16, .33], [0, -.79, -.05]);
-    body.add(leg);
-
-    const arm = new THREE.Group();
-    arm.position.set(side * .29, 1.32, 0);
-    piece(arm, jacket, [.14, .44, .17], [0, -.22, 0]);
-    piece(arm, gear, [.12, .13, .13], [0, -.48, 0]);
-    body.add(arm);
-    limbs.push({ leg, arm, side });
-  }
-  return { body, limbs };
-}
 
 export class Player {
   constructor(spawn) {
@@ -56,7 +21,7 @@ export class Player {
     this.spawn = spawn;
     this.gait = 0;
 
-    const { body, limbs } = placeholderBody();
+    const { body, limbs } = createSurvivorBody();
     this.setBody(body);
     this.placeholderLimbs = limbs;
     this.reset();
@@ -76,6 +41,8 @@ export class Player {
     this.visual.clear();
     this.visual.add(body);
     this.placeholderLimbs = [];
+    this.itemSocket = body.getObjectByName('ItemSocket');
+    if (this.heldItem) this.setHeldItem(this.heldItem);
     body.traverse((object) => {
       object.layers.set(PLAYER_BODY_LAYER);
       if (object.isMesh) {
@@ -97,6 +64,14 @@ export class Player {
       jump.setLoop(THREE.LoopOnce, 1);
       jump.clampWhenFinished = true;
     }
+  }
+
+  setHeldItem(item) {
+    this.heldItem?.removeFromParent();
+    this.heldItem = item;
+    if (!this.itemSocket) return;
+    item.traverse((object) => object.layers.set(PLAYER_BODY_LAYER));
+    this.itemSocket.add(item);
   }
 
   step(delta, input, solids) {
