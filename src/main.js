@@ -14,7 +14,7 @@ const play = element('play');
 const restart = element('restart');
 const startupError = element('startup-error');
 
-const SLOT_KEYS = new Map([['Digit1', 1], ['Digit2', 2]]);
+const SLOT_KEYS = new Map([['Digit1', 1], ['Digit2', 2], ['Digit3', 3]]);
 const GAME_KEYS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight', 'Space', 'KeyE',
   'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
