@@ -1,0 +1,12 @@
+{
+  "name": "lost-survivor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node serve.mjs"
+  },
+  "dependencies": {
+    "three": "0.183.2"
+  }
+}

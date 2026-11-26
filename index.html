@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141b17">
+  <title>Lost Survivor</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./node_modules/three/build/three.module.js",
+        "three/addons/": "./node_modules/three/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="game" aria-label="Lost Survivor">
+    <canvas id="view" aria-label="3D view of the relay yard"></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <div id="menu" class="menu">
+      <header class="menu-header">
+        <span class="map-name"><span class="signal-icon" aria-hidden="true"><i></i><i></i><i></i></span> Relay Yard</span>
+        <span class="status"><span class="status-dot"></span><span id="menu-signal">Signal lost</span></span>
+      </header>
+
+      <section class="menu-content" aria-labelledby="menu-title">
+        <h1 id="menu-title">Lost<br><span>Survivor</span></h1>
+        <p id="menu-description">Bring three offline relays back online.</p>
+        <div class="menu-actions">
+          <button type="button" id="play" disabled><span class="play-icon" aria-hidden="true"></span><span id="play-label">Loading yard…</span></button>
+          <button type="button" id="restart" class="secondary" hidden>Restart</button>
+        </div>
+        <p id="startup-error" class="startup-error" role="status" hidden></p>
+      </section>
+
+      <footer class="control-guide" aria-label="Controls">
+        <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move</span>
+        <span><span class="mouse-icon" aria-hidden="true"></span> Mouse to look</span>
+        <span><kbd>Shift</kbd> Sprint</span>
+        <span><kbd>Space</kbd> Jump</span>
+        <span><kbd>E</kbd> Activate</span>
+        <span><kbd>Esc</kbd> Pause</span>
+      </footer>
+    </div>
+
+    <div id="hud" class="hud" hidden>
+      <section class="objectives" aria-label="Relay status">
+        <div class="objective-header"><span class="signal-icon" aria-hidden="true"><i></i><i></i><i></i></span><h2 id="objective-title">Restore the signal</h2><span id="relay-count">0 / 3</span></div>
+        <ol id="objective-list"></ol>
+      </section>
+      <div class="compass" aria-label="Heading"><span id="compass-left"></span><strong id="bearing">N</strong><span id="compass-right"></span></div>
+      <div id="markers" aria-hidden="true"></div>
+      <div id="reticle" class="reticle" aria-hidden="true"></div>
+      <div id="prompt" class="prompt" hidden><kbd>E</kbd><span id="prompt-label">Activate relay</span></div>
+      <p id="notification" class="notification" role="status"></p>
+      <button type="button" id="pause" class="pause"><kbd>Esc</kbd> Pause</button>
+      <p id="free-look-hint" class="free-look-hint" hidden>Drag or use arrow keys to look</p>
+    </div>
+  </main>
+  <script type="module" src="./src/main.js"></script>
+  <script>
+    window.addEventListener('error', (event) => {
+      if (event.target instanceof HTMLScriptElement && event.target.type === 'module') {
+        document.getElementById('play-label').textContent = 'Yard unavailable';
+        const error = document.getElementById('startup-error');
+        error.textContent = 'Run npm install and npm run dev, then open the local address.';
+        error.hidden = false;
+      }
+    }, true);
+  </script>
+</body>
+</html>
