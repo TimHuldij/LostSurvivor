@@ -18,16 +18,16 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080) in a desktop browser with We
 | Shift + W | Sprint |
 | Space | Jump |
 | E | Activate a nearby relay while facing its panel |
-| Left click or F | Fire the G19 |
+| Left click | Fire the G19 |
 | R | Reload |
-| I | Inspect |
+| F | Inspect |
 | Esc | Pause |
 
 If the browser blocks mouse capture, drag on the game or use the arrow keys to look. Use **Restart** from the pause screen to reset the yard.
 
 ## Game models
 
-The full-body survivor, G19, and first-person hands are built in JavaScript. The pistol has a reload animation with synchronized sound cues and a separate inspect animation. Sound effects are synthesized in the browser.
+The full-body survivor, G19, and first-person arms are built in JavaScript. The arms use a two-handed grip, woven sleeves, and padded gloves. The pistol has a reload animation with synchronized sound cues and a separate inspect animation. Sound effects are synthesized in the browser.
 
 ### Optional model imports
 

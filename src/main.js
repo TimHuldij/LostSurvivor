@@ -15,7 +15,7 @@ const startupError = element('startup-error');
 const GAME_KEYS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight', 'Space', 'KeyE',
   'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-  'KeyF', 'KeyR', 'KeyI',
+  'KeyF', 'KeyR',
 ]);
 const FIXED_STEP = 1 / 120;
 const CARDINALS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -311,9 +311,8 @@ function runGame(renderer) {
     if (event.repeat) return;
     if (event.code === 'Space') jumpQueued = true;
     if (event.code === 'KeyE') activateRelay();
-    if (event.code === 'KeyF') pistol.fire();
     if (event.code === 'KeyR') pistol.begin('reload');
-    if (event.code === 'KeyI') pistol.begin('inspect');
+    if (event.code === 'KeyF') pistol.begin('inspect');
   });
   document.addEventListener('keyup', (event) => keys.delete(event.code));
   document.addEventListener('mousemove', (event) => {
@@ -338,7 +337,8 @@ function runGame(renderer) {
     dragPointer.y = event.clientY;
   });
   canvas.addEventListener('pointerup', (event) => {
-    if (mode === 'playing' && !locked && event.pointerId === dragPointer?.id && !dragPointer.moved) {
+    if (mode === 'playing' && !locked && event.button === 0 && event.pointerType === 'mouse' &&
+        event.pointerId === dragPointer?.id && !dragPointer.moved) {
       pistol.fire();
     }
   });

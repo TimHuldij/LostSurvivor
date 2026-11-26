@@ -1,14 +1,15 @@
 import * as THREE from 'three';
-import { roundedPart } from './model-geometry.js';
 import { PistolAudio } from './pistol-audio.js';
 import { createPistolModel } from './pistol-model.js';
+import { createViewmodelArms } from './viewmodel-arms.js';
 
 const CAPACITY = 15;
 const SHOT_INTERVAL = .19;
 const UP = new THREE.Vector3(0, 1, 0);
-const REST = [.38, -.295, -1.13];
-const HOLD = [.035, .24, -.10];
-const SUPPORT = [-.095, -.22, -.045];
+const REST = [.39, -.158, -1.31];
+const HOLD = [.055, .17, -.065];
+const SUPPORT = [-.074, -.263, .042];
+const SUPPORT_GRIP = [.17, .34, -.21];
 const ZERO = [0, 0, 0];
 
 // Each animation samples the weapon pose and accessory poses from the same clock.
@@ -33,14 +34,14 @@ const ACTIONS = {
       [.94, ZERO, ZERO], [1.46, ZERO, ZERO],
     ],
     support: [
-      [0, SUPPORT, ZERO],
+      [0, SUPPORT, SUPPORT_GRIP],
       [.27, [-.105, -.32, .105], [-.24, .22, -.14]],
       [.55, [-.012, -.68, .25], [-.22, .28, -.38]],
       [.65, [-.28, -.64, .27], [-.22, .28, -.43]],
       [.81, [-.12, -.492, .15], [-.18, .29, -.27]],
       [.94, [-.068, -.332, .105], [-.12, .21, -.24]],
       [1.16, [-.122, -.255, .035], [.10, .12, -.14]],
-      [1.46, SUPPORT, ZERO],
+      [1.46, SUPPORT, SUPPORT_GRIP],
     ],
   },
   inspect: {
@@ -55,12 +56,12 @@ const ACTIONS = {
       [2.18, REST, HOLD],
     ],
     support: [
-      [0, SUPPORT, ZERO],
+      [0, SUPPORT, SUPPORT_GRIP],
       [.32, [-.15, -.37, -.08], [-.20, .13, -.14]],
       [.75, [-.13, -.27, -.125], [.10, .18, -.16]],
       [1.19, [-.22, -.36, -.13], [-.27, .22, .24]],
       [1.58, [-.15, -.27, -.10], [-.12, .22, .11]],
-      [2.18, SUPPORT, ZERO],
+      [2.18, SUPPORT, SUPPORT_GRIP],
     ],
   },
 };
@@ -92,35 +93,6 @@ function samplePose(node, keyframes, time) {
     lerp(fromRotation[2], toRotation[2], blend),
     'YXZ',
   );
-}
-
-function makeGlove(side) {
-  const hand = new THREE.Group();
-  const textile = new THREE.MeshStandardMaterial({ color: 0x374035, roughness: .94 });
-  const knuckle = new THREE.MeshStandardMaterial({ color: 0x616854, roughness: .77 });
-  const rubber = new THREE.MeshStandardMaterial({ color: 0x252d29, roughness: .87 });
-  roundedPart(hand, textile, [.10, .139, .116], [0, 0, .027], .035);
-  roundedPart(hand, knuckle, [.024, .093, .103], [side * .044, .018, .015], .012);
-  roundedPart(hand, rubber, [.082, .084, .092], [-side * .003, -.075, .047], .027);
-  for (let finger = 0; finger < 4; finger++) {
-    const pad = roundedPart(hand, textile, [.045, .035, .101 - finger * .009],
-      [-side * .011, .055 - finger * .031, -.047 + finger * .007], .015);
-    pad.rotation.y = -side * .44;
-  }
-  const thumb = roundedPart(hand, rubber, [.046, .051, .086], [-side * .036, .041, .002], .017);
-  thumb.rotation.y = side * .63;
-  return hand;
-}
-
-function makeSleeve() {
-  const arm = new THREE.Group();
-  const cloth = new THREE.MeshStandardMaterial({ color: 0x77805a, roughness: .96 });
-  const cuff = new THREE.MeshStandardMaterial({ color: 0x464f3d, roughness: .91 });
-  const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(.075, .117, 1, 12), cloth);
-  const band = new THREE.Mesh(new THREE.CylinderGeometry(.075, .082, .13, 12), cuff);
-  band.position.y = .432;
-  arm.add(sleeve, band);
-  return arm;
 }
 
 function muzzleFlash() {
@@ -163,17 +135,13 @@ export class Pistol {
     this.upper = upper;
     this.magazine = magazine;
     this.flash = muzzleFlash();
-    this.rightHand = makeGlove(1);
-    this.rightHand.position.set(.043, -.24, .137);
-    this.rightHand.rotation.y = -.17;
-    this.leftHand = makeGlove(-1);
-    this.viewmodel.add(this.rightHand, this.leftHand, this.flash);
-
-    this.rightSleeve = makeSleeve();
-    this.leftSleeve = makeSleeve();
-    this.scene.add(this.viewmodel, this.rightSleeve, this.leftSleeve);
-    this.rightElbow = new THREE.Vector3(.57, -.83, -.53);
-    this.leftElbow = new THREE.Vector3(-.32, -.82, -.52);
+    this.arms = createViewmodelArms();
+    const { rightHand, leftHand, rightSleeve, leftSleeve } = this.arms;
+    pose(rightHand, [.052, -.229, .137], [.14, -.26, .09]);
+    this.viewmodel.add(rightHand, leftHand, this.flash);
+    this.scene.add(this.viewmodel, rightSleeve, leftSleeve);
+    this.rightElbow = new THREE.Vector3(.59, -.73, -.48);
+    this.leftElbow = new THREE.Vector3(-.21, -.75, -.50);
     this.wrist = new THREE.Vector3();
     this.armDirection = new THREE.Vector3();
     this.capacity = CAPACITY;
@@ -231,12 +199,12 @@ export class Pistol {
 
     if (this.action) {
       samplePose(this.viewmodel, animation.weapon, this.elapsed);
-      samplePose(this.leftHand, animation.support, this.elapsed);
+      samplePose(this.arms.leftHand, animation.support, this.elapsed);
       if (animation.magazine) samplePose(this.magazine, animation.magazine, this.elapsed);
       this.magazine.visible = this.action !== 'reload' || this.elapsed < .55 || this.elapsed > .68;
     } else {
       pose(this.viewmodel, REST, HOLD);
-      pose(this.leftHand, SUPPORT, ZERO);
+      pose(this.arms.leftHand, SUPPORT, SUPPORT_GRIP);
       pose(this.magazine, ZERO, ZERO);
       this.magazine.visible = true;
     }
@@ -264,8 +232,9 @@ export class Pistol {
     this.shotAge += delta;
 
     this.viewmodel.updateMatrixWorld(true);
-    this.updateSleeve(this.rightSleeve, this.rightElbow, this.rightHand);
-    this.updateSleeve(this.leftSleeve, this.leftElbow, this.leftHand);
+    const { rightSleeve, rightHand, leftSleeve, leftHand } = this.arms;
+    this.updateSleeve(rightSleeve, this.rightElbow, rightHand);
+    this.updateSleeve(leftSleeve, this.leftElbow, leftHand);
   }
 
   updateSleeve(sleeve, elbow, hand) {
