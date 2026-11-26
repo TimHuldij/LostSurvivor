@@ -1,6 +1,20 @@
 # Lost Survivor
 
-A desktop browser first-person playtest. Explore a fenced forest relay yard and bring the entry post, workshop, and raised lookout back online.
+A desktop browser survival playtest. Explore a fenced forest relay yard and bring the entry post, workshop, and raised lookout back online. The current slice favors responsive movement, handless first-person interaction, physical-feeling doors, and a muted low-poly forest atmosphere.
+
+The project uses HTML, CSS, JavaScript modules and Three.js. It requires Node.js and a desktop browser with WebGL 2. Gameplay runs in memory and resets when restarted. There is no build step or production build script.
+
+For design, implementation status and session continuity, read [GAME_DESIGN.md](GAME_DESIGN.md), [DEVELOPMENT.md](DEVELOPMENT.md), [HANDOFF.md](HANDOFF.md), and [AGENTS.md](AGENTS.md).
+
+## Project structure
+
+- `index.html` and `styles.css` contain the HUD and page layout.
+- `src/main.js` connects input, rendering, simulation and UI.
+- `src/player.js` and `src/third-person-camera.js` implement movement and cameras.
+- `src/inventory.js` and `src/pistol*.js` implement equipment and weapon presentation.
+- `src/door.js`, `src/world.js`, and `src/landscape.js` implement doors and the procedural map.
+- `src/models.js` and `models/` configure optional user-created models.
+- `tests/` contains door tests. `serve.mjs` is the local HTTP server.
 
 ## Run locally
 
@@ -17,7 +31,7 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080) in a desktop browser with We
 | Mouse | Look around |
 | Shift + W | Sprint |
 | Space | Jump |
-| E | Activate a nearby relay while facing its panel |
+| E | Activate a relay, or open or close a door |
 | 1 | Holster the Glock |
 | 2 | Equip the Glock |
 | Hold left click | Fire when the Glock is equipped |
@@ -29,6 +43,38 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080) in a desktop browser with We
 | Esc | Pause |
 
 If the browser blocks mouse capture, drag on the game or use the arrow keys to look. Use **Restart** from the pause screen to reset the yard.
+
+## Doors
+
+Face a door and press E to open it. Press E again to close it. A door has to be unlatched before it can be pushed by walking into it.
+
+The workshop and storehouse have doors. The workshop entrance is beside the shutter, and the storehouse is behind the lookout path.
+
+### Adding and configuring doors
+
+Create a doorway in the surrounding walls, then add a `Door` to the world's `doors` array in [src/world.js](src/world.js). For example:
+
+```js
+doors.push(new Door(scene, {
+  hinge: [x, floorY, z],
+  yaw: 0,
+  width: 1.1,
+  height: 2.35,
+  mass: 45,
+  minAngle: 0,
+  maxAngle: 1.4,
+  openingDirection: 1,
+  locked: false,
+}));
+```
+
+The hinge is the world-space bottom corner, and the closed door extends along its local positive X axis. `yaw` sets its closed orientation in radians. Angles and handle rotation use radians. Use `openingDirection: 0` for a door that chooses its opening side from the player. For double doors, create two doors with separate hinges and angles that swing away from each other.
+
+Other options include `thickness`, `axis` (vertical Y-up), `openingSpeed`, `closingSpeed`, `friction`, `damping`, `interactionDistance`, `handleRotation`, `latch`, `collision`, `color`, and `metalness`. Change `door.locked` at runtime to lock or unlock a door. The existing collision system uses axis-aligned boxes, so place solid boxes around the doorway and keep the door's sweep clear of its frame.
+
+The optional `audio.onEvent` callback receives `{ type, position, angularVelocity, intensity, door }`. Event types include `handle`, `latch`, `locked`, `creak`, `open`, `close`, `slam`, and `collision`. Connect these events to positional sound assets when available.
+
+Run the door checks with `node --test tests/doors.test.js`.
 
 ## Game models
 

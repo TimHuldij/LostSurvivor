@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Door } from './door.js';
 import { addLandscape, makeTexture, randomSource } from './landscape.js';
 
 const OFFLINE = 0xffae58;
@@ -26,6 +27,7 @@ export function createWorld() {
   const materials = new Map();
   const solids = [];
   const relays = [];
+  const doors = [];
   const iron = 0x323c3a;
   const dark = 0x232d28;
   const timber = 0x615843;
@@ -182,12 +184,29 @@ export function createWorld() {
     const depth = 7.4;
     const front = z + depth / 2;
     const height = 3.75;
-    box(scene, x, height / 2, z, width, height, depth, rust, true);
+    // The front wall has a pedestrian entrance beside the existing shutter.
+    const doorwayLeft = 11.15;
+    const doorwayRight = 12.45;
+    const left = x - width / 2;
+    const right = x + width / 2;
+    box(scene, (left + doorwayLeft) / 2, height / 2, front, doorwayLeft - left, height, .22, rust, true);
+    box(scene, (doorwayRight + right) / 2, height / 2, front, right - doorwayRight, height, .22, rust, true);
+    box(scene, (doorwayLeft + doorwayRight) / 2, 3.12, front, doorwayRight - doorwayLeft, 1.26, .22, rust, true);
+    box(scene, x, height / 2, z - depth / 2, width, height, .22, rust, true);
+    box(scene, left, height / 2, z, .22, height, depth, rust, true);
+    box(scene, right, height / 2, z, .22, height, depth, rust, true);
+    doors.push(new Door(scene, {
+      hinge: [doorwayLeft + .08, 0, front + .21], width: doorwayRight - doorwayLeft - .16,
+      height: 2.42, mass: 52, minAngle: 0, maxAngle: 1.35,
+      openingDirection: 1, color: 0x5a6557, metalness: .3,
+    }));
     box(scene, x, .18, front + .08, width + .12, .36, .24, concrete);
     box(scene, x, height + .08, z, width + .65, .26, depth + .7, dark);
     box(scene, x, height + .27, z - 1.8, width + .25, .21, 3.4, iron);
     for (let i = 0; i <= 29; i++) {
-      box(scene, x - width / 2 + i * width / 29, 2.07, front + .02, .13, 3.39, .11, i % 3 ? 0x995d40 : 0x784430);
+      const ribX = x - width / 2 + i * width / 29;
+      if (ribX > doorwayLeft && ribX < doorwayRight) continue;
+      box(scene, ribX, 2.07, front + .02, .13, 3.39, .11, i % 3 ? 0x995d40 : 0x784430);
     }
     for (let i = 0; i <= 18; i++) {
       box(scene, x - width / 2 - .02, 2.07, z - depth / 2 + i * depth / 18, .10, 3.39, .11, rust);
@@ -210,6 +229,30 @@ export function createWorld() {
     box(scene, 18.5, .13, -7.98, 1.3, .26, 3.45, concrete, true);
     crate(17.8, .26, -8.05, 1.05, .82, 1.35);
     crate(16.22, 0, -8.68, 1.18, .62, 1.04);
+  }
+
+  function buildStorehouse() {
+    const x = .3;
+    const front = -17.0;
+    const back = -22.0;
+    const left = -2.9;
+    const right = 3.5;
+    const doorLeft = -.75;
+    const doorRight = .62;
+    const height = 3.15;
+    box(scene, (left + doorLeft) / 2, height / 2, front, doorLeft - left, height, .2, timber, true);
+    box(scene, (doorRight + right) / 2, height / 2, front, right - doorRight, height, .2, timber, true);
+    box(scene, (doorLeft + doorRight) / 2, 2.76, front, doorRight - doorLeft, .78, .2, timber, true);
+    box(scene, x, height / 2, back, right - left, height, .2, timber, true);
+    box(scene, left, height / 2, (front + back) / 2, .2, height, front - back, timber, true);
+    box(scene, right, height / 2, (front + back) / 2, .2, height, front - back, timber, true);
+    box(scene, x, height + .1, (front + back) / 2, right - left + .45, .25, front - back + .45, dark);
+    sign(scene, 1.9, 2.28, front + .13, 1.75, 'STOREHOUSE');
+    doors.push(new Door(scene, {
+      hinge: [doorLeft + .08, 0, front + .20], width: doorRight - doorLeft - .16,
+      height: 2.36, mass: 32, minAngle: 0, maxAngle: 1.42,
+      openingDirection: 1, color: 0x786047,
+    }));
   }
 
   function buildLookout() {
@@ -293,6 +336,7 @@ export function createWorld() {
   fence(0, -27, 43);
   fence(0, 22.6, 43);
   buildWorkshop();
+  buildStorehouse();
   buildLookout();
   buildShelter();
   crate(6.1, 0, 4.4, 2.05, .56, 1.65, 0x67704d);
@@ -324,5 +368,5 @@ export function createWorld() {
   relay('03', 'Lookout', -8.5, 1.4, -19.45);
 
   const spawn = { x: .0, y: 0, z: 13.2, yaw: .18 };
-  return { scene, solids, relays, spawn };
+  return { scene, solids, relays, doors, spawn };
 }

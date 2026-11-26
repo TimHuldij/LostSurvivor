@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { DebugPanel } from './debug-panel.js';
+import { DoorInteraction } from './door.js';
 import { Inventory } from './inventory.js';
 import { loadModels } from './models.js';
 import { FirstPersonCamera, Player } from './player.js';
@@ -50,6 +51,7 @@ function runGame(renderer) {
   const world = createWorld();
   const player = new Player(world.spawn);
   world.scene.add(player.root);
+  const doors = new DoorInteraction(world.doors, world.solids);
 
   const view = new FirstPersonCamera(1);
   const thirdPerson = new ThirdPersonCamera(1);
@@ -87,6 +89,8 @@ function runGame(renderer) {
   let accumulator = 0;
   let previousTime = performance.now();
   let needsRender = true;
+  const previousPlayerPosition = new THREE.Vector3();
+  const intendedPlayerPosition = new THREE.Vector3();
 
   const prompt = element('prompt');
   const promptLabel = element('prompt-label');
@@ -154,6 +158,7 @@ function runGame(renderer) {
   }
 
   function reset() {
+    for (const door of world.doors) door.reset();
     player.reset();
     inventory.reset();
     showEquippedItem();
@@ -239,7 +244,7 @@ function runGame(renderer) {
         .addScaledVector(viewRight, right)
         .addScaledVector(viewDown, down);
       viewRay.set(viewOrigin, viewDirection);
-      for (const solid of world.solids) {
+      for (const solid of [...world.solids, ...doors.collisionBoxes]) {
         const intersection = viewRay.intersectBox(solid, obstructionHit);
         if (intersection) nearest = Math.min(nearest, viewOrigin.distanceTo(intersection));
       }
@@ -260,7 +265,7 @@ function runGame(renderer) {
       if (distance >= nearestDistance || offset.normalize().dot(aim) < .71) continue;
 
       lineOfSight.set(eye, offset);
-      const obstructed = world.solids.some((box) => {
+      const obstructed = [...world.solids, ...doors.collisionBoxes].some((box) => {
         const intersection = lineOfSight.intersectBox(box, hit);
         return intersection && eye.distanceToSquared(intersection) < (distance - .07) ** 2;
       });
@@ -310,11 +315,15 @@ function runGame(renderer) {
       }
     }
 
-    const relay = nearbyRelay();
-    prompt.hidden = !relay;
-    reticle.classList.toggle('ready', Boolean(relay));
-    reticle.classList.toggle('dimmed', Boolean(inventory.action) && !relay);
-    if (relay) promptLabel.textContent = `Activate ${relay.label.toLowerCase()} relay`;
+    const door = doors.focus(gameplayCamera, player);
+    const relay = door ? null : nearbyRelay();
+    prompt.hidden = !door && !relay;
+    reticle.classList.toggle('ready', Boolean(relay || door));
+    reticle.classList.toggle('dimmed', Boolean(inventory.action) && !relay && !door);
+    if (door) {
+      const opening = door.target !== null ? Math.abs(door.target) > .03 : Math.abs(door.angle) > .015;
+      promptLabel.textContent = door.locked ? 'Locked' : opening ? 'Close' : 'Open';
+    } else if (relay) promptLabel.textContent = `Activate ${relay.label.toLowerCase()} relay`;
     if (notificationUntil && now > notificationUntil) {
       notification.textContent = '';
       notificationUntil = 0;
@@ -337,11 +346,19 @@ function runGame(renderer) {
       while (accumulator >= FIXED_STEP) {
         input.jump = jumpQueued;
         jumpQueued = false;
-        player.step(FIXED_STEP, input, world.solids, orbiting ? thirdPerson.yaw : null);
+        doors.step(FIXED_STEP, player);
+        previousPlayerPosition.copy(player.position);
+        const playerYaw = orbiting ? thirdPerson.yaw : input.yaw;
+        intendedPlayerPosition.set(input.side, 0, -input.forward);
+        if (intendedPlayerPosition.lengthSq() > 1) intendedPlayerPosition.normalize();
+        intendedPlayerPosition.applyAxisAngle(THREE.Object3D.DEFAULT_UP, playerYaw)
+          .multiplyScalar((input.sprint ? 5.6 : 3.8) * FIXED_STEP).add(previousPlayerPosition);
+        for (const door of world.doors) door.push(previousPlayerPosition, { position: intendedPlayerPosition });
+        player.step(FIXED_STEP, input, [...world.solids, ...doors.collisionBoxes], orbiting ? thirdPerson.yaw : null);
         accumulator -= FIXED_STEP;
       }
       if (player.position.y < -8) reset();
-      if (orbiting) thirdPerson.update(player, input.yaw, pitch, world.solids, delta);
+      if (orbiting) thirdPerson.update(player, input.yaw, pitch, [...world.solids, ...doors.collisionBoxes], delta);
       view.update(player, pitch, delta, orbiting ? thirdPerson.yaw : input.yaw, inventory.pistol.cameraRecoil);
       const obstruction = !orbiting && inventory.isPistol ? nearestViewObstruction() : Infinity;
       inventory.update(delta, player.speed, aiming && !orbiting, obstruction);
@@ -387,21 +404,33 @@ function runGame(renderer) {
     keys.add(event.code);
     if (event.repeat) return;
     if (event.code === 'Space') jumpQueued = true;
-    if (event.code === 'KeyE') activateRelay();
+    if (event.code === 'KeyE') {
+      const door = doors.focus(gameplayCamera, player);
+      if (door) {
+        door.interact(player);
+      } else activateRelay();
+    }
     if (event.code === 'KeyR') inventory.reload();
     if (event.code === 'KeyF') inventory.inspect();
     if (event.code === 'KeyV') toggleCamera();
     if (event.code === 'F2') debugPanel.toggle();
     const slot = SLOT_KEYS.get(event.code);
-    if (slot && inventory.select(slot)) showEquippedItem();
+    if (slot) {
+      if (inventory.select(slot)) showEquippedItem();
+    }
   });
   document.addEventListener('keyup', (event) => keys.delete(event.code));
   document.addEventListener('mousemove', (event) => {
-    if (mode === 'playing' && locked) look(event.movementX * .0023, event.movementY * .0023);
+    if (mode === 'playing' && locked) {
+      look(event.movementX * .0023, event.movementY * .0023);
+    }
   });
   document.addEventListener('mousedown', (event) => {
     if (mode !== 'playing') return;
-    if (event.button === 0 && locked) fireHeld = true;
+    if (event.button === 0 && locked) {
+      inventory.fire();
+      fireHeld = true;
+    }
     if (event.button === 2) aiming = true;
   });
   document.addEventListener('mouseup', (event) => {
