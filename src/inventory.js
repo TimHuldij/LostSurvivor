@@ -1,11 +1,9 @@
 import * as THREE from 'three';
 import { Pistol } from './pistol.js';
-import { createSwordModel } from './sword-model.js';
 import { alignSleeve, createViewmodelArms } from './viewmodel-arms.js';
 
 const HANDS = 1;
 const GLOCK = 2;
-const SWORD = 3;
 const PALMS = {
   ready: [
     [[-.425, -.263, -1.035], [-.36, -.45, -.44], .93],
@@ -14,16 +12,6 @@ const PALMS = {
   inspect: [
     [[-.385, -.105, -1.04], [.14, -.29, -.28], .07],
     [[.39, -.081, -1.03], [.15, .34, .26], .05],
-  ],
-};
-const SWORD_POSES = {
-  ready: [
-    [[-.425, -.372, -1.035], [-.37,-.34,-.44], .80],
-    [[.43, -.337, -1.14], [-.55,.18,-.25], .89],
-  ],
-  inspect: [
-    [[-.40,-.68,-1.0], [-.40,-.33,-.35], .66],
-    [[.365,-.200,-1.14], [-.45,-.38,.92], .86],
   ],
 };
 
@@ -43,11 +31,6 @@ export class Inventory {
     this.freeHands = new THREE.Group();
     const { leftHand, rightHand, leftSleeve, rightSleeve, curlLeft, curlRight } = createViewmodelArms(false);
     this.freeHands.add(leftHand, rightHand, leftSleeve, rightSleeve);
-    this.sword = createSwordModel();
-    this.worldSword = this.sword.clone(true);
-    this.worldSword.rotation.set(-.12, .16, -.50);
-    this.sword.position.set(-.021, .028, -.076);
-    rightHand.add(this.sword);
     this.arms = [
       { hand: leftHand, sleeve: leftSleeve, curl: curlLeft, elbow: new THREE.Vector3(-.66, -.73, -.56) },
       { hand: rightHand, sleeve: rightSleeve, curl: curlRight, elbow: new THREE.Vector3(.66, -.73, -.56) },
@@ -64,7 +47,6 @@ export class Inventory {
     return this.inspectTime === null ? null : 'inspect';
   }
   get heldItem() {
-    if (this.slot === SWORD) return this.worldSword;
     return this.isPistol ? this.pistol.worldModel : null;
   }
 
@@ -82,12 +64,11 @@ export class Inventory {
   }
 
   select(slot) {
-    if (slot === this.slot || (slot !== HANDS && slot !== GLOCK && slot !== SWORD)) return false;
+    if (slot === this.slot || (slot !== HANDS && slot !== GLOCK)) return false;
     this.pistol.cancelAction();
     this.slot = slot;
     this.inspectTime = null;
     this.equipTime = 0;
-    this.sword.visible = slot === SWORD;
     this.pistol.root.visible = this.isPistol;
     this.freeHands.visible = !this.isPistol;
     this.update(0, 0);
@@ -129,12 +110,10 @@ export class Inventory {
     const move = this.reducedMotion ? 0 : Math.min(speed / 5, 1) * (1 - inspect);
     const enter = this.reducedMotion ? 0 : .145 * (1 - smoothstep(this.equipTime, 0, .22));
     const width = clamp(aspect / 1.42, .56, 1.08);
-    const layout = this.slot === SWORD ? SWORD_POSES : PALMS;
-    this.sword.rotation.set(lerp(.08,.17,inspect), lerp(.18,.46,inspect), -.06);
 
     this.arms.forEach(({ hand, sleeve, elbow, curl }, index) => {
-      const [from, angles, grip] = layout.ready[index];
-      const [to, targetAngles, open] = layout.inspect[index];
+      const [from, angles, grip] = PALMS.ready[index];
+      const [to, targetAngles, open] = PALMS.inspect[index];
       const side = index === 0 ? -1 : 1;
       hand.position.set(
         width * lerp(from[0], to[0], inspect) + Math.sin(this.stride) * move * .015,
