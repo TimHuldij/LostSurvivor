@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { DebugPanel } from './debug-panel.js';
 import { DoorInteraction } from './door.js';
+import { applyGrenadeBlast, GrenadeProjectile } from './grenade.js';
 import { Inventory } from './inventory.js';
 import { loadModels } from './models.js';
 import { NavigationGrid } from './navigation.js';
 import { NPC } from './npc.js';
-import { AmmoPickup } from './pickups.js';
+import { AmmoPickup, GrenadePickup, MedicalPickup } from './pickups.js';
 import { traceHitscan } from './hitscan.js';
 import { FirstPersonCamera, Player } from './player.js';
 import { THIRD_PERSON_MAX_PITCH, THIRD_PERSON_MIN_PITCH, ThirdPersonCamera } from './third-person-camera.js';
@@ -19,7 +20,10 @@ const play = element('play');
 const restart = element('restart');
 const startupError = element('startup-error');
 
-const SLOT_KEYS = new Map([['Digit1', 1], ['Digit2', 2], ['Digit3', 3]]);
+const SLOT_KEYS = new Map([
+  ['Digit1', 1], ['Digit2', 2], ['Digit3', 3], ['Digit4', 4],
+  ['Digit5', 5], ['Digit6', 6], ['Digit7', 7],
+]);
 const GAME_KEYS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight', 'Space', 'KeyE',
   'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
@@ -80,12 +84,15 @@ function runGame(renderer) {
     new AmmoPickup(world.scene, [-12.4, .16, -.8]),
     new AmmoPickup(world.scene, [4.1, 0, -14.2]),
     new AmmoPickup(world.scene, [16.2, 0, 3.2]),
+    new MedicalPickup(world.scene, [4.5, 0, 8.5]),
+    new GrenadePickup(world.scene, [5.8, 0, 11.8]),
   ];
+  const grenadeProjectiles = [];
 
   const view = new FirstPersonCamera(1);
   const thirdPerson = new ThirdPersonCamera(1);
   let gameplayCamera = view.camera;
-  const inventory = new Inventory(view.reducedMotion);
+  const inventory = new Inventory(view.reducedMotion, world.scene);
   const debugPanel = new DebugPanel(element('debug-panel'));
   const menuCamera = new THREE.PerspectiveCamera(55, 1, .05, 215);
   menuCamera.position.set(-11.4, 4.6, 19.1);
@@ -134,6 +141,8 @@ function runGame(renderer) {
   const playerHealth = element('player-health');
   const playerHealthValue = element('player-health-value');
   const pistolCounter = element('pistol-counter');
+  const medicalCounter = element('medical-counter');
+  const grenadeCounter = element('grenade-counter');
   const equipmentStatus = element('equipment-status');
   const slotRows = [...element('inventory-slots').children];
   element('pistol-capacity').textContent = `/ ${inventory.pistol.capacity}`;
@@ -152,12 +161,29 @@ function runGame(renderer) {
   }
 
   function updateEquipmentStatus() {
-    const { pistol, rifle, action, isPistol } = inventory;
+    const { pistol, rifle, action } = inventory;
     element('rifle-ammo').textContent = String(rifle.ammo).padStart(2, '0');
     element('rifle-reserve').textContent = ` / ${rifle.reserve}`;
     const ammo = String(pistol.ammo).padStart(2, '0');
-    const status = action === 'reload' ? 'Reloading' :
-      action === 'inspect' ? 'Inspecting' : inventory.activeWeapon?.ammo === 0 ? 'Empty · R to reload' : inventory.slot === 3 ? `AK-47 · ${inventory.fireMode} · B to switch` : '';
+    element('medical-uses').textContent = `${inventory.medical.uses} / ${inventory.medical.maxUses}`;
+    element('grenade-count').textContent = `${inventory.grenade.uses} / ${inventory.grenade.maxUses}`;
+    let status = '';
+    if (inventory.slot === 4) {
+      status = `Flashlight · ${inventory.flashlight.isOn ? 'on' : 'off'} · F to toggle`;
+    } else if (inventory.slot === 5) {
+      status = inventory.medical.uses
+        ? `Medkit · ${inventory.medical.uses} · F to use`
+        : 'No medkits · E to collect';
+    } else if (inventory.slot === 6) {
+      status = 'Knife · F to strike';
+    } else if (inventory.slot === 7) {
+      status = inventory.grenade.uses
+        ? `Grenade · ${inventory.grenade.uses} · F to throw`
+        : 'No grenades · E to collect';
+    } else if (action === 'reload') status = 'Reloading';
+    else if (action === 'inspect') status = 'Inspecting';
+    else if (inventory.activeWeapon?.ammo === 0) status = 'Empty · R to reload';
+    else if (inventory.slot === 3) status = `AK-47 · ${inventory.fireMode} · B to switch`;
     if (pistolAmmo.textContent !== ammo) pistolAmmo.textContent = ammo;
     if (equipmentStatus.textContent !== status) equipmentStatus.textContent = status;
   }
@@ -173,6 +199,8 @@ function runGame(renderer) {
     }
     pistolCounter.hidden = !inventory.isPistol;
     element('rifle-counter').hidden = inventory.slot !== 3;
+    medicalCounter.hidden = inventory.slot !== 5;
+    grenadeCounter.hidden = inventory.slot !== 7;
     updateEquipmentStatus();
   }
 
@@ -192,6 +220,8 @@ function runGame(renderer) {
   }
 
   function reset() {
+    for (const projectile of grenadeProjectiles) projectile.dispose();
+    grenadeProjectiles.length = 0;
     for (const door of world.doors) door.reset();
     syncCollisionBoxes();
     player.reset();
@@ -248,6 +278,25 @@ function runGame(renderer) {
     const hit = traceHitscan(gameplayCamera.position, direction, npcs, collisionBoxes);
     hit?.target.takeDamage(inventory.slot === 3 ? 34 : 25, player);
     for (const npc of npcs) npc.hear(player.position, 18, collisionBoxes, world.doors);
+  }
+
+  function resolveMeleeStrike() {
+    gameplayCamera.updateMatrixWorld();
+    gameplayCamera.getWorldDirection(aim);
+    const result = traceHitscan(gameplayCamera.position, aim, npcs, collisionBoxes);
+    if (result && result.distance <= 2.4) result.target.takeDamage(45, player);
+  }
+
+  function launchGrenade() {
+    gameplayCamera.updateMatrixWorld();
+    gameplayCamera.getWorldDirection(aim);
+    const origin = gameplayCamera === view.camera
+      ? gameplayCamera.position.clone()
+      : player.position.clone().add(new THREE.Vector3(0, 1.42, 0));
+    origin.addScaledVector(aim, .42);
+    const velocity = aim.clone().multiplyScalar(8.5);
+    velocity.y += 2.8;
+    grenadeProjectiles.push(new GrenadeProjectile(world.scene, origin, velocity));
   }
 
   function updateCapture() {
@@ -405,7 +454,7 @@ function runGame(renderer) {
     if (door) {
       const opening = door.target !== null ? Math.abs(door.target) > .03 : Math.abs(door.angle) > .015;
       promptLabel.textContent = door.locked ? 'Locked' : opening ? 'Close' : 'Open';
-    } else if (pickup) promptLabel.textContent = 'Collect rifle ammunition';
+    } else if (pickup) promptLabel.textContent = pickup.prompt;
     else if (relay) promptLabel.textContent = `Activate ${relay.label.toLowerCase()} relay`;
     if (notificationUntil && now > notificationUntil) {
       notification.textContent = '';
@@ -440,6 +489,17 @@ function runGame(renderer) {
         for (const door of world.doors) door.push(previousPlayerPosition, { position: intendedPlayerPosition });
         player.step(FIXED_STEP, input, collisionBoxes, orbiting ? thirdPerson.yaw : null);
         for (const npc of npcs) npc.update(FIXED_STEP, world.doors, player, collisionBoxes);
+        for (let index = grenadeProjectiles.length - 1; index >= 0; index--) {
+          const projectile = grenadeProjectiles[index];
+          if (projectile.step(FIXED_STEP, collisionBoxes)) {
+            applyGrenadeBlast(projectile.position, [player, ...npcs], collisionBoxes, player);
+            inventory.pistol.audio.play('blast');
+          }
+          if (!projectile.alive) {
+            projectile.dispose();
+            grenadeProjectiles.splice(index, 1);
+          }
+        }
         accumulator -= FIXED_STEP;
       }
       updatePlayerHealth();
@@ -448,7 +508,9 @@ function runGame(renderer) {
       if (orbiting) thirdPerson.update(player, input.yaw, pitch, collisionBoxes, delta);
       view.update(player, pitch, delta, orbiting ? thirdPerson.yaw : input.yaw, (inventory.activeWeapon?.cameraRecoil ?? 0));
       const obstruction = !orbiting && inventory.activeWeapon ? nearestViewObstruction() : Infinity;
-      inventory.update(delta, player.speed, aiming && !orbiting, obstruction);
+      inventory.update(delta, player.speed, aiming && !orbiting, obstruction, gameplayCamera);
+      if (inventory.melee.consumeStrike()) resolveMeleeStrike();
+      if (inventory.grenade.consumeThrow()) launchGrenade();
       if (fireHeld && (inventory.slot !== 3 || inventory.fireMode === 'auto')) fireWeapon();
       updateEquipmentStatus();
       updateHUD(now);
@@ -499,14 +561,22 @@ function runGame(renderer) {
         const pickup = focusedPickup();
         if (pickup) {
           const amount = pickup.collect(inventory);
-          notification.textContent = amount ? `Collected ${amount} rifle rounds.` : 'Rifle ammunition full.';
+          notification.textContent = pickup.ammoType === 'medical'
+            ? amount ? 'Collected medical kit.' : 'Medical kit capacity full.'
+            : pickup.ammoType === 'grenade'
+              ? amount ? 'Collected grenade.' : 'Grenade capacity full.'
+            : amount ? `Collected ${amount} rifle rounds.` : 'Rifle ammunition full.';
           notificationUntil = performance.now() + 2500;
           if (amount) inventory.pistol.audio.play('seat');
         } else activateRelay();
       }
     }
     if (event.code === 'KeyR') inventory.reload();
-    if (event.code === 'KeyF') inventory.inspect();
+    if (event.code === 'KeyF') {
+      if (inventory.slot === 4 || inventory.slot === 5 ||
+          inventory.slot === 6 || inventory.slot === 7) inventory.useItem(player);
+      else inventory.inspect();
+    }
     if (event.code === 'KeyB' && inventory.slot === 3) inventory.fireMode = inventory.fireMode === 'auto' ? 'single' : 'auto';
     if (event.code === 'KeyV') toggleCamera();
     if (event.code === 'F2') debugPanel.toggle();

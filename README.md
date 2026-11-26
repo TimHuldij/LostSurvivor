@@ -12,11 +12,12 @@ For design, implementation status and session continuity, read [GAME_DESIGN.md](
 - `src/main.js` connects input, rendering, simulation and UI.
 - `src/player.js` and `src/third-person-camera.js` implement movement and cameras.
 - `src/inventory.js` and `src/pistol*.js` implement equipment and weapon presentation.
+- `src/equippable-item.js`, `src/flashlight.js`, `src/medical-item.js`, `src/melee-weapon.js`, and `src/grenade.js` implement reusable handless non-firearm items.
 - `src/door.js`, `src/world.js`, and `src/landscape.js` implement doors and the procedural map.
 - `src/models.js` and `models/` configure optional user-created models.
 - `src/npc.js`, `src/navigation.js`, and `src/hitscan.js` implement ground-level patrol, door-aware navigation, sound investigation, hostile vision and hitscan combat.
-- `src/rifle-model.js` and `src/pickups.js` implement the procedural rifle model and ammunition boxes.
-- `tests/` contains door, NPC and pickup tests. `serve.mjs` is the local HTTP server.
+- `src/rifle-model.js` and `src/pickups.js` implement the procedural rifle and rifle/medical supply pickups.
+- `tests/` contains door, hitscan, NPC, player, pickup, flashlight, medical-item, melee-item and grenade tests. `serve.mjs` is the local HTTP server.
 
 ## Run locally
 
@@ -33,15 +34,19 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080) in a desktop browser with We
 | Mouse | Look around |
 | Shift + W | Sprint |
 | Space | Jump |
-| E | Activate a relay, or open or close a door |
-| 1 | Holster the Glock |
+| E | Activate a relay, open or close a door, or collect a focused supply |
+| 1 | Holster equipped item |
 | 2 | Equip the Glock |
 | 3 | Equip the AK-47 |
+| 4 | Equip the flashlight |
+| 5 | Equip the medkit |
+| 6 | Equip the knife |
+| 7 | Equip the grenade |
 | B | Toggle AK-47 automatic/single fire |
 | Left click | Fire; hold for automatic fire |
 | Right click | Aim down sights |
 | R | Reload the equipped weapon |
-| F | Inspect the equipped slot |
+| F | Inspect the equipped weapon; toggle the flashlight; use the medkit; strike with the knife; or throw a grenade |
 | V | Switch between first person and third person |
 | F2 | Toggle debug stats |
 | Esc | Pause |
@@ -120,3 +125,11 @@ Player height defaults to 1.76 meters. Its mesh is centered at the feet, and `ya
 The AK-47 starts with 30 rounds loaded and 90 in reserve. Face an ammunition box and press E to collect rifle rounds, up to a 180-round reserve. Boxes retain any rounds that do not fit and disappear when depleted. Restart resets the equipment and boxes. The rifle currently reuses the Glock animation framework and synthesized sound; shots use hitscan damage against NPCs, with walls and doors blocking shots.
 
 The yard includes a neutral survivor who investigates nearby gunfire and becomes hostile when shot, plus a hostile rifle carrier who patrols, detects the player, pursues, and attacks. Player health is shown in the HUD. Combat and perception are an initial prototype; cover, elevated navigation and fuller combat animation/audio are not implemented.
+
+The flashlight is a handless, non-firearm held item in slot 4. Press F while equipped to toggle its forward-facing light; its held model uses a configurable equip transition and movement sway. It has no battery drain yet.
+
+The medkit in slot 5 uses the same held-item base. E collects medical supplies, up to two charges; F consumes one to restore up to 40 missing health. A full-health use does not consume a charge.
+
+The handless knife in slot 6 uses a timed, non-overlapping strike. Its contact window damages the nearest NPC within 2.4 meters, while world geometry and doors block the hit. It deals 45 damage and can make a neutral survivor hostile.
+
+The handless grenade in slot 7 has up to two charges. Face a grenade pickup and press E to collect it; press F to throw. It has a 1.8-second fuse, bounces off world and door blockers, and deals distance-falloff blast damage to targets within 5 meters when they are not occluded. A post-fix browser throw consumed its charge without a runtime error during the fuse wait; visual detonation and live blast damage still need verification. See HANDOFF.md.

@@ -111,6 +111,13 @@ export class Player {
     return true;
   }
 
+  heal(amount) {
+    if (this.health <= 0 || !Number.isFinite(amount) || amount <= 0) return 0;
+    const restored = Math.min(amount, PLAYER_HEALTH - this.health);
+    this.health += restored;
+    return restored;
+  }
+
   step(delta, input, solids, cameraYaw = null) {
     const thirdPerson = cameraYaw !== null;
     this.running = input.sprint && (thirdPerson ? Boolean(input.forward || input.side) : input.forward > 0);

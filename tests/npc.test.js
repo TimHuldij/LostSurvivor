@@ -127,6 +127,23 @@ test('hostile attacks apply damage on cadence and stop behind blockers', () => {
   assert.equal(player.health, 100);
 });
 
+test('a closed door blocks hostile sight and attacks', () => {
+  const scene = new THREE.Scene();
+  const npc = new NPC(scene, new NavigationGrid([], {
+    minX: -5, maxX: 5, minZ: -5, maxZ: 5, cellSize: .5,
+  }), {
+    position: [0, 0, 0], route: [[0, 0, 0]], disposition: 'hostile',
+  });
+  const player = new Player({ x: 0, y: 0, z: -4, yaw: 0 });
+  const door = new Door(scene, {
+    hinge: [-.55, 0, -2], width: 1.1, minAngle: -1.48, maxAngle: 1.48,
+  });
+
+  assert.equal(npc.canSee(player, door.segments), false);
+  npc.update(.1, [door], player, door.segments);
+  assert.equal(player.health, 100);
+});
+
 test('taking damage turns a neutral survivor hostile and reset restores disposition', () => {
   const npc = survivor();
   const player = new Player({ x: 0, y: 0, z: 2, yaw: 0 });

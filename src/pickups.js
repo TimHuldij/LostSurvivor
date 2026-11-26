@@ -33,6 +33,8 @@ export class AmmoPickup {
     return count;
   }
 
+  get prompt() { return 'Collect rifle ammunition'; }
+
   focus(camera, player, obstacles) {
     if (!this.amount || this.position.distanceTo(player.position) > 2.4) return false;
     const origin = camera.position;
@@ -46,5 +48,44 @@ export class AmmoPickup {
       const hit = ray.intersectBox(box, new THREE.Vector3());
       return hit && origin.distanceTo(hit) < distance - .12;
     });
+  }
+}
+
+export class MedicalPickup extends AmmoPickup {
+  constructor(scene, position, { amount = 1 } = {}) {
+    super(scene, position, { amount, ammoType: 'medical', limit: 2 });
+    this.root.children[0].material = new THREE.MeshStandardMaterial({ color: 0x777b5c, roughness: .88 });
+    const marking = new THREE.MeshStandardMaterial({ color: 0xa94435, roughness: .75 });
+    const vertical = new THREE.Mesh(new THREE.BoxGeometry(.045, .014, .12), marking);
+    vertical.position.set(0, .26, 0);
+    const horizontal = new THREE.Mesh(new THREE.BoxGeometry(.14, .014, .045), marking);
+    horizontal.position.set(0, .26, 0);
+    this.root.add(vertical, horizontal);
+  }
+
+  get prompt() { return 'Collect medical supplies'; }
+
+  collect(inventory) {
+    const count = inventory.medical.collect(this.amount);
+    this.amount -= count;
+    if (!this.amount) this.root.visible = false;
+    return count;
+  }
+}
+
+export class GrenadePickup extends AmmoPickup {
+  constructor(scene, position, { amount = 1 } = {}) {
+    super(scene, position, { amount, ammoType: 'grenade', limit: 2 });
+    this.root.children[0].material = new THREE.MeshStandardMaterial({ color: 0x48523d, roughness: .78 });
+    this.root.children[1].material = new THREE.MeshStandardMaterial({ color: 0xc28b46, roughness: .72 });
+  }
+
+  get prompt() { return 'Collect grenade'; }
+
+  collect(inventory) {
+    const count = inventory.grenade.collect(this.amount);
+    this.amount -= count;
+    if (!this.amount) this.root.visible = false;
+    return count;
   }
 }
