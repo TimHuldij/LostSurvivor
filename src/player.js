@@ -275,14 +275,14 @@ export class FirstPersonCamera {
     this.update(player, pitch, 0);
   }
 
-  update(player, pitch, delta, yaw = player.yaw) {
+  update(player, pitch, delta, yaw = player.yaw, recoil = 0) {
     const camera = this.camera;
     this.eyeHeight = THREE.MathUtils.damp(this.eyeHeight, player.position.y + 1.63, 29, delta);
     this.stride += player.speed * delta * 2.6;
     const bob = this.reducedMotion || !player.grounded ? 0 : Math.sin(this.stride) * Math.min(player.speed / 140, .038);
     this.bob = THREE.MathUtils.damp(this.bob, bob, 14, delta);
     camera.position.set(player.position.x, this.eyeHeight + this.bob, player.position.z);
-    camera.rotation.set(pitch, yaw, 0);
+    camera.rotation.set(pitch - recoil, yaw, 0);
 
     const fov = THREE.MathUtils.damp(camera.fov, player.speed > 4.6 && !this.reducedMotion ? 80 : 74, 8, delta);
     if (Math.abs(fov - camera.fov) > .015) {

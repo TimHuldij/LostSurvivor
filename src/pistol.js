@@ -1,17 +1,17 @@
 import * as THREE from 'three';
 import { PistolAudio } from './pistol-audio.js';
 import { createPistolModel } from './pistol-model.js';
-import { alignSleeve, createViewmodelArms } from './viewmodel-arms.js';
 
 const CAPACITY = 15;
 const SHOT_INTERVAL = .19;
 const REST = [.31, -.244, -1.43];
 const HOLD = [.112, .073, -.048];
-const SUPPORT = [-.069, -.253, .074];
-const SUPPORT_GRIP = [.19, .39, -.18];
+const AIM = [.015, -.15, -1.6];
+const AIM_HOLD = [.015, .015, 0];
+const AIM_POSITION = new THREE.Vector3(...AIM);
 const ZERO = [0, 0, 0];
 
-// Each animation samples the weapon pose and accessory poses from the same clock.
+// Each action samples weapon and magazine poses from the same clock.
 const ACTIONS = {
   reload: {
     duration: 1.46,
@@ -32,16 +32,6 @@ const ACTIONS = {
       [.80, [-.065, -.16, .045], [-.105, .11, -.18]],
       [.94, ZERO, ZERO], [1.46, ZERO, ZERO],
     ],
-    support: [
-      [0, SUPPORT, SUPPORT_GRIP],
-      [.27, [-.105, -.32, .105], [-.24, .22, -.14]],
-      [.55, [-.012, -.68, .25], [-.22, .28, -.38]],
-      [.65, [-.28, -.64, .27], [-.22, .28, -.43]],
-      [.81, [-.12, -.492, .15], [-.18, .29, -.27]],
-      [.94, [-.068, -.332, .105], [-.12, .21, -.24]],
-      [1.16, [-.122, -.255, .035], [.10, .12, -.14]],
-      [1.46, SUPPORT, SUPPORT_GRIP],
-    ],
   },
   inspect: {
     duration: 2.18,
@@ -54,14 +44,6 @@ const ACTIONS = {
       [1.49, [.34, -.072, -1.04], [-.16, 1.36, .12]],
       [1.87, [.35, -.22, -1.37], [.04, .53, -.051]],
       [2.18, REST, HOLD],
-    ],
-    support: [
-      [0, SUPPORT, SUPPORT_GRIP],
-      [.24, [-.16, -.46, -.018], [-.16, .20, -.22]],
-      [.55, [-.28, -.89, -.11], [-.28, .16, -.42]],
-      [1.48, [-.28, -.89, -.11], [-.28, .16, -.42]],
-      [1.88, [-.14, -.44, .032], [-.02, .28, -.25]],
-      [2.18, SUPPORT, SUPPORT_GRIP],
     ],
   },
 };
@@ -120,26 +102,36 @@ export class Pistol {
     this.audio = new PistolAudio();
     this.reducedMotion = reducedMotion;
     this.root = new THREE.Group();
+    this.equipped = false;
+    this.equipBlend = 0;
+    this.lookLag = new THREE.Vector2();
+    this.clock = 0;
 
     const { body, upper, magazine } = createPistolModel();
     this.worldModel = body.clone(true);
     this.worldModel.scale.setScalar(.34);
     this.viewmodel = body;
+    this.viewMaterials = [];
+    this.viewmodel.traverse((object) => {
+      if (!object.isMesh) return;
+      const cloneMaterial = (material) => {
+        const clone = material.clone();
+        clone.transparent = true;
+        clone.depthWrite = false;
+        this.viewMaterials.push(clone);
+        return clone;
+      };
+      object.material = Array.isArray(object.material)
+        ? object.material.map(cloneMaterial)
+        : cloneMaterial(object.material);
+    });
     this.upper = upper;
     this.magazine = magazine;
     this.flash = muzzleFlash();
-    this.arms = createViewmodelArms();
-    const { rightHand, leftHand, rightSleeve, leftSleeve } = this.arms;
-    pose(rightHand, [.045, -.226, .161], [.13, -.07, .04]);
-    rightHand.scale.setScalar(1.10);
-    leftHand.scale.setScalar(1.14);
-    rightSleeve.scale.set(1.29, 1, 1.29);
-    leftSleeve.scale.copy(rightSleeve.scale);
-    this.viewmodel.add(rightHand, leftHand, this.flash);
-    this.root.add(this.viewmodel, rightSleeve, leftSleeve);
-    this.rightElbow = new THREE.Vector3(.55, -.66, -.52);
-    this.leftElbow = new THREE.Vector3(-.16, -.68, -.54);
-    this.wrist = new THREE.Vector3();
+    this.viewMaterials.push(this.flash.material);
+    this.viewmodel.add(this.flash);
+    this.root.add(this.viewmodel);
+    this.root.visible = false;
     this.capacity = CAPACITY;
     this.reset();
   }
@@ -149,7 +141,32 @@ export class Pistol {
     this.cancelAction();
     this.stride = 0;
     this.sprint = 0;
+    this.aimBlend = 0;
+    this.cameraRecoil = 0;
+    this.obstructionOpacity = 1;
+    this.viewOpacity = 1;
+    for (const material of this.viewMaterials) material.opacity = 1;
+    this.equipBlend = 0;
+    this.equipped = false;
+    this.root.visible = false;
+    this.lookLag.set(0, 0);
+    this.clock = 0;
     this.update(0, 0);
+  }
+
+  setEquipped(equipped) {
+    this.equipped = equipped;
+    if (equipped) this.root.visible = true;
+  }
+
+  addLook(horizontal, vertical) {
+    if (this.reducedMotion) return;
+    this.lookLag.x = THREE.MathUtils.clamp(this.lookLag.x + horizontal * 1.5, -.14, .14);
+    this.lookLag.y = THREE.MathUtils.clamp(this.lookLag.y + vertical * 1.5, -.12, .12);
+  }
+
+  setObstruction(distance) {
+    this.obstructionOpacity = THREE.MathUtils.smoothstep(distance, .55, 1.35);
   }
 
   cancelAction() {
@@ -160,7 +177,7 @@ export class Pistol {
   }
 
   fire() {
-    if (this.action || this.cooldown > 0) return;
+    if (!this.equipped || this.action || this.cooldown > 0) return;
     this.cooldown = SHOT_INTERVAL;
     if (this.ammo === 0) {
       this.audio.play('dry');
@@ -168,16 +185,24 @@ export class Pistol {
     }
     this.ammo--;
     this.shotAge = 0;
+    this.cameraRecoil = Math.min(this.cameraRecoil + .018, .055);
     this.audio.play('fire');
   }
 
   begin(action) {
-    if (this.action || !Object.hasOwn(ACTIONS, action)) return;
+    if (!this.equipped || this.action || !Object.hasOwn(ACTIONS, action)) return;
     this.action = action;
     this.elapsed = 0;
   }
 
-  update(delta, speed, aspect = 1.38) {
+  update(delta, speed, aspect = 1.38, aiming = false) {
+    this.clock += delta;
+    this.viewOpacity = THREE.MathUtils.damp(this.viewOpacity, this.obstructionOpacity, 12, delta);
+    for (const material of this.viewMaterials) material.opacity = this.viewOpacity;
+    this.equipBlend = THREE.MathUtils.damp(this.equipBlend, Number(this.equipped), 14, delta);
+    this.lookLag.multiplyScalar(Math.exp(-7 * delta));
+    if (!this.equipped && this.equipBlend < .002) this.root.visible = false;
+
     this.cooldown = Math.max(0, this.cooldown - delta);
     const animation = ACTIONS[this.action];
     if (animation) {
@@ -194,24 +219,38 @@ export class Pistol {
 
     if (this.action) {
       samplePose(this.viewmodel, animation.weapon, this.elapsed);
-      samplePose(this.arms.leftHand, animation.support, this.elapsed);
       if (animation.magazine) samplePose(this.magazine, animation.magazine, this.elapsed);
       this.magazine.visible = this.action !== 'reload' || this.elapsed < .55 || this.elapsed > .68;
     } else {
       pose(this.viewmodel, REST, HOLD);
-      pose(this.arms.leftHand, SUPPORT, SUPPORT_GRIP);
       pose(this.magazine, ZERO, ZERO);
       this.magazine.visible = true;
     }
 
+    this.aimBlend = THREE.MathUtils.damp(this.aimBlend, Number(aiming && this.equipped && !this.action && speed < 4.6), 13, delta);
+    this.viewmodel.position.lerp(AIM_POSITION, this.aimBlend);
+    this.viewmodel.rotation.x = THREE.MathUtils.lerp(this.viewmodel.rotation.x, AIM_HOLD[0], this.aimBlend);
+    this.viewmodel.rotation.y = THREE.MathUtils.lerp(this.viewmodel.rotation.y, AIM_HOLD[1], this.aimBlend);
+    this.viewmodel.rotation.z = THREE.MathUtils.lerp(this.viewmodel.rotation.z, AIM_HOLD[2], this.aimBlend);
+
     this.stride += speed * delta * 2.85;
     this.sprint = THREE.MathUtils.damp(this.sprint, speed > 4.6 && !this.action ? 1 : 0, 10, delta);
-    if (!this.reducedMotion && !this.action) {
+    if (!this.reducedMotion && this.equipped && !this.action) {
       const walk = Math.min(speed / 5, 1);
+      const idle = 1 - walk;
       this.viewmodel.position.x += Math.sin(this.stride) * .015 * walk;
       this.viewmodel.position.y += Math.cos(this.stride * 2) * .011 * walk;
       this.viewmodel.rotation.z += Math.sin(this.stride) * .025 * walk;
+      this.viewmodel.position.x += Math.sin(this.clock * .72) * .0025 * idle;
+      this.viewmodel.position.y += Math.sin(this.clock * .94) * .0035 * idle;
+      this.viewmodel.rotation.z += Math.sin(this.clock * .72) * .004 * idle;
     }
+    if (this.equipped) {
+      this.viewmodel.rotation.y += this.lookLag.x;
+      this.viewmodel.rotation.x -= this.lookLag.y;
+    }
+    this.viewmodel.position.y -= (1 - this.equipBlend) * .42;
+    this.viewmodel.rotation.x += (1 - this.equipBlend) * .28;
     if (!this.reducedMotion) {
       this.viewmodel.position.y -= this.sprint * .10;
       this.viewmodel.rotation.x -= this.sprint * .24;
@@ -225,9 +264,6 @@ export class Pistol {
     this.upper.position.z = recoil * .043;
     this.flash.visible = !this.reducedMotion && this.shotAge < .045;
     this.shotAge += delta;
-
-    const { rightSleeve, rightHand, leftSleeve, leftHand } = this.arms;
-    alignSleeve(rightSleeve, this.rightElbow, rightHand, this.wrist.set(0, -.093, .050));
-    alignSleeve(leftSleeve, this.leftElbow, leftHand, this.wrist.set(0, -.093, .050));
+    this.cameraRecoil = THREE.MathUtils.damp(this.cameraRecoil, 0, 8, delta);
   }
 }

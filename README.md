@@ -18,9 +18,10 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080) in a desktop browser with We
 | Shift + W | Sprint |
 | Space | Jump |
 | E | Activate a nearby relay while facing its panel |
-| 1 | Equip hands |
+| 1 | Holster the Glock |
 | 2 | Equip the Glock |
-| Left click | Fire when the Glock is equipped |
+| Hold left click | Fire when the Glock is equipped |
+| Right click | Aim down sights |
 | R | Reload the Glock |
 | F | Inspect the equipped slot |
 | V | Switch between first person and third person |
@@ -31,7 +32,7 @@ If the browser blocks mouse capture, drag on the game or use the arrow keys to l
 
 ## Game models
 
-The full-body survivor, Glock, and first-person arms are built in JavaScript. The playtest starts with hands equipped. The pistol has a one-handed inspect animation and a reload animation with synchronized sound cues. Switching away from the pistol during reload cancels that reload and preserves its ammo count. Sound effects are synthesized in the browser.
+The full-body survivor and Glock are built in JavaScript. First-person items render without visible hands or arms. The Glock has an inspect animation and a reload animation with synchronized sound cues. Switching away from the pistol during reload cancels that reload and preserves its ammo count. Sound effects are synthesized in the browser.
 
 ### Optional model imports
 

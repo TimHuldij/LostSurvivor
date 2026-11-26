@@ -68,10 +68,19 @@ function runGame(renderer) {
   const hit = new THREE.Vector3();
   const projected = new THREE.Vector3();
   const lineOfSight = new THREE.Ray();
+  const viewDirection = new THREE.Vector3();
+  const viewRight = new THREE.Vector3();
+  const viewDown = new THREE.Vector3();
+  const viewOrigin = new THREE.Vector3();
+  const viewRay = new THREE.Ray();
+  const obstructionHit = new THREE.Vector3();
+  const viewmodelRayOffsets = [[0, 0], [.25, -.14], [.44, -.30]];
 
   let mode = 'menu';
   let pitch = -.035;
   let locked = false;
+  let fireHeld = false;
+  let aiming = false;
   let dragPointer = null;
   let jumpQueued = false;
   let notificationUntil = 0;
@@ -167,6 +176,8 @@ function runGame(renderer) {
   function pause() {
     if (mode !== 'playing') return;
     mode = 'paused';
+    fireHeld = false;
+    aiming = false;
     keys.clear();
     jumpQueued = false;
     dragPointer = null;
@@ -198,6 +209,7 @@ function runGame(renderer) {
 
   function look(horizontal, vertical) {
     input.yaw = THREE.MathUtils.euclideanModulo(input.yaw - horizontal + Math.PI, 2 * Math.PI) - Math.PI;
+    if (gameplayCamera === view.camera) inventory.addLook(horizontal, vertical);
     const orbiting = gameplayCamera === thirdPerson.camera;
     pitch = THREE.MathUtils.clamp(pitch - vertical,
       orbiting ? THIRD_PERSON_MIN_PITCH : -1.43, orbiting ? THIRD_PERSON_MAX_PITCH : 1.43);
@@ -215,6 +227,24 @@ function runGame(renderer) {
       cameraMode.textContent = 'First person';
       reticle.hidden = false;
     }
+  }
+
+  function nearestViewObstruction() {
+    view.camera.getWorldDirection(viewDirection);
+    viewRight.set(1, 0, 0).applyQuaternion(view.camera.quaternion);
+    viewDown.set(0, -1, 0).applyQuaternion(view.camera.quaternion);
+    let nearest = Infinity;
+    for (const [right, down] of viewmodelRayOffsets) {
+      viewOrigin.copy(view.camera.position)
+        .addScaledVector(viewRight, right)
+        .addScaledVector(viewDown, down);
+      viewRay.set(viewOrigin, viewDirection);
+      for (const solid of world.solids) {
+        const intersection = viewRay.intersectBox(solid, obstructionHit);
+        if (intersection) nearest = Math.min(nearest, viewOrigin.distanceTo(intersection));
+      }
+    }
+    return nearest;
   }
 
   function nearbyRelay() {
@@ -312,8 +342,10 @@ function runGame(renderer) {
       }
       if (player.position.y < -8) reset();
       if (orbiting) thirdPerson.update(player, input.yaw, pitch, world.solids, delta);
-      view.update(player, pitch, delta, orbiting ? thirdPerson.yaw : input.yaw);
-      inventory.update(delta, player.speed);
+      view.update(player, pitch, delta, orbiting ? thirdPerson.yaw : input.yaw, inventory.pistol.cameraRecoil);
+      const obstruction = !orbiting && inventory.isPistol ? nearestViewObstruction() : Infinity;
+      inventory.update(delta, player.speed, aiming && !orbiting, obstruction);
+      if (fireHeld) inventory.fire();
       updateEquipmentStatus();
       updateHUD(now);
       debugPanel.update(now, player, orbiting);
@@ -368,7 +400,16 @@ function runGame(renderer) {
     if (mode === 'playing' && locked) look(event.movementX * .0023, event.movementY * .0023);
   });
   document.addEventListener('mousedown', (event) => {
-    if (mode === 'playing' && locked && event.button === 0) inventory.fire();
+    if (mode !== 'playing') return;
+    if (event.button === 0 && locked) fireHeld = true;
+    if (event.button === 2) aiming = true;
+  });
+  document.addEventListener('mouseup', (event) => {
+    if (event.button === 0) fireHeld = false;
+    if (event.button === 2) aiming = false;
+  });
+  document.addEventListener('contextmenu', (event) => {
+    if (mode === 'playing') event.preventDefault();
   });
   canvas.addEventListener('pointerdown', (event) => {
     if (mode !== 'playing' || locked || event.button !== 0) return;
