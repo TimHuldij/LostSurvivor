@@ -97,17 +97,6 @@ kbd { display: inline-grid; place-items: center; min-width: 1.28rem; height: 1.4
 .compass { position: absolute; top: var(--inset); left: 50%; transform: translateX(-50%); display: grid; grid-template-columns: 2rem 3.4rem 2rem; align-items: center; text-align: center; gap: .25rem; text-shadow: 0 1px 5px #000, 0 1px 15px #000; color: var(--paper); }
 .compass strong { display: block; padding: .38rem .25rem; background: var(--panel); border: 1px solid var(--line); color: var(--accent); }
 .compass span { opacity: .84; }
-.debug-panel { position: absolute; top: var(--inset); right: var(--inset); z-index: 1; width: min(17rem, calc(100% - 2 * var(--inset))); padding: .7rem .8rem .8rem; background: var(--panel); border: 1px solid var(--line); font-size: .875rem; }
-.debug-panel header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-.debug-panel h2 { margin: 0; font-size: 1rem; }
-.debug-panel dl { margin: 0; }
-.debug-panel dt { color: var(--muted); }
-.debug-panel dd { margin: 0; color: var(--paper); font-family: ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
-.debug-panel .debug-coordinates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .25rem; margin: .62rem 0; padding: .44rem .43rem; background: #28342491; border: 1px solid var(--line); }
-.debug-coordinates dt { font-size: .75rem; }
-.debug-coordinates dd { color: var(--accent); overflow-wrap: anywhere; }
-.debug-stats { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .24rem .75rem; }
-.debug-stats dd { text-align: right; }
 
 .reticle { width: 17px; height: 17px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); filter: drop-shadow(0 1px 2px #000); color: var(--paper); }
 .reticle::before, .reticle::after { content: ""; display: block; position: absolute; background: currentColor; }
@@ -115,29 +104,21 @@ kbd { display: inline-grid; place-items: center; min-width: 1.28rem; height: 1.4
 .reticle::after { width: 1px; height: 13px; left: 8px; top: 2px; }
 .reticle.ready { color: var(--accent); }
 .reticle.dimmed { opacity: .22; }
-.equipment { position: absolute; left: var(--inset); bottom: var(--inset); max-width: calc(100% - 8rem); }
-.inventory-slots { display: flex; flex-wrap: wrap; gap: .3rem; padding: 0; margin: 0; list-style: none; }
-.inventory-slots li { display: flex; align-items: center; gap: .4rem; padding: .36rem .5rem; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: .875rem; white-space: nowrap; }
-.inventory-slots li[aria-current] { border-color: var(--accent); color: var(--paper); }
-.inventory-slots li[aria-current] kbd { color: #17200e; background: var(--accent); border-color: var(--accent); }
-.ammo-count { display: flex; align-items: baseline; gap: .3rem; padding-left: .45rem; border-left: 1px solid var(--line); font: 600 .77rem/1.2 ui-monospace, Consolas, monospace; }
-.ammo-count strong { font-size: 1rem; color: var(--accent); }
-#equipment-status { position: absolute; left: 0; bottom: calc(100% + .3rem); margin: 0; width: max-content; padding: .23rem .45rem; color: var(--amber); background: var(--panel); border: 1px solid var(--line); font-size: .82rem; }
-#equipment-status:empty { display: none; }
+.weapon-hud { position: absolute; left: var(--inset); bottom: var(--inset); display: grid; gap: .18rem; min-width: 7.5rem; padding: .55rem .8rem; background: var(--panel); border: 1px solid var(--line); }
+.weapon-name, .ammo-count { font: 600 .82rem/1.2 ui-monospace, Consolas, monospace; letter-spacing: .08em; }
+.weapon-name { color: var(--muted); }
+.ammo-count { display: flex; align-items: baseline; gap: .4rem; }
+.ammo-count strong { font-size: 1.55rem; color: var(--accent); }
+#pistol-status { color: var(--amber); font-size: .82rem; }
+#pistol-status:empty { display: none; }
 .marker { position: absolute; display: grid; justify-items: center; gap: .35rem; min-width: 3.25rem; transform: translate(-50%, -50%); text-shadow: 0 2px 4px #000, 0 0 8px #000; color: var(--amber); letter-spacing: .02em; }
 .marker::before { content: ""; display: block; width: .58rem; height: .58rem; border: 2px solid currentColor; box-shadow: 0 1px 4px #000; transform: rotate(45deg); }
 .prompt, .notification { position: absolute; left: 50%; transform: translateX(-50%); width: max-content; max-width: 85vw; background: var(--panel); border: 1px solid var(--line); padding: .6rem .85rem; text-align: center; }
 .prompt { top: calc(50% + 2rem); display: flex; gap: .55rem; align-items: center; }
 .notification { bottom: 4.2rem; margin: 0; color: var(--accent); font-weight: 650; }
 .notification:empty { display: none; }
-.play-controls { position: absolute; right: var(--inset); bottom: var(--inset); display: grid; justify-items: end; gap: .3rem; max-width: 45%; }
-.camera-control, .pause { display: flex; gap: .45rem; align-items: center; margin: 0; padding: .4rem .6rem; background: var(--panel); border: 1px solid var(--line); color: var(--paper); font-size: .875rem; }
-.pause { pointer-events: auto; }
-.free-look-hint { margin: 0; font-size: .875rem; background: var(--panel); padding: .45rem .6rem; }
-
-@media (max-width: 760px) {
-  .debug-panel { top: calc(var(--inset) + 2.7rem); }
-}
+.pause { pointer-events: auto; position: absolute; right: var(--inset); bottom: var(--inset); display: flex; gap: .45rem; align-items: center; padding: .45rem .65rem; background: var(--panel); border: 1px solid var(--line); color: var(--paper); font-size: .875rem; }
+.free-look-hint { position: absolute; right: var(--inset); bottom: calc(var(--inset) + 2.75rem); margin: 0; max-width: 45%; font-size: .875rem; background: var(--panel); padding: .45rem .6rem; }
 
 @media (max-width: 660px) {
   .menu { background: linear-gradient(90deg, #0d1813ed, #0d18134f), linear-gradient(0deg, #0b140fef, transparent 34%); }
@@ -145,8 +126,4 @@ kbd { display: inline-grid; place-items: center; min-width: 1.28rem; height: 1.4
   .objectives { min-width: auto; padding: .65rem; }
   .objective-header { gap: .35rem; }
   #relay-count { padding-left: .2rem; }
-}
-
-@media (max-width: 520px) {
-  .debug-panel { top: calc(var(--inset) + 9.25rem); }
 }

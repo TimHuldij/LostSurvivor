@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 import { PistolAudio } from './pistol-audio.js';
 import { createPistolModel } from './pistol-model.js';
-import { alignSleeve, createViewmodelArms } from './viewmodel-arms.js';
+import { createViewmodelArms } from './viewmodel-arms.js';
 
 const CAPACITY = 15;
 const SHOT_INTERVAL = .19;
-const REST = [.31, -.244, -1.43];
-const HOLD = [.112, .073, -.048];
-const SUPPORT = [-.069, -.253, .074];
-const SUPPORT_GRIP = [.19, .39, -.18];
+const UP = new THREE.Vector3(0, 1, 0);
+const REST = [.39, -.158, -1.31];
+const HOLD = [.055, .17, -.065];
+const SUPPORT = [-.074, -.263, .042];
+const SUPPORT_GRIP = [.17, .34, -.21];
 const ZERO = [0, 0, 0];
 
 // Each animation samples the weapon pose and accessory poses from the same clock.
@@ -45,22 +46,21 @@ const ACTIONS = {
   },
   inspect: {
     duration: 2.18,
-    cues: [[.22, 'cloth'], [1.83, 'cloth']],
+    cues: [[.22, 'cloth'], [1.16, 'cloth']],
     weapon: [
       [0, REST, HOLD],
-      [.34, [.37, -.132, -1.19], [.06, 1.12, -.24]],
-      [.69, [.33, -.053, -.98], [.12, 1.51, -.25]],
-      [1.12, [.33, -.056, -.97], [.14, 1.57, -.22]],
-      [1.49, [.34, -.072, -1.04], [-.16, 1.36, .12]],
-      [1.87, [.35, -.22, -1.37], [.04, .53, -.051]],
+      [.38, [.08, -.05, -1.03], [.06, 1.38, -.36]],
+      [.83, [.07, -.044, -1.02], [.14, 1.68, -.39]],
+      [1.19, [.12, -.09, -1.11], [-.36, .85, .34]],
+      [1.58, [.14, -.10, -1.10], [-.42, .65, .28]],
       [2.18, REST, HOLD],
     ],
     support: [
       [0, SUPPORT, SUPPORT_GRIP],
-      [.24, [-.16, -.46, -.018], [-.16, .20, -.22]],
-      [.55, [-.28, -.89, -.11], [-.28, .16, -.42]],
-      [1.48, [-.28, -.89, -.11], [-.28, .16, -.42]],
-      [1.88, [-.14, -.44, .032], [-.02, .28, -.25]],
+      [.32, [-.15, -.37, -.08], [-.20, .13, -.14]],
+      [.75, [-.13, -.27, -.125], [.10, .18, -.16]],
+      [1.19, [-.22, -.36, -.13], [-.27, .22, .24]],
+      [1.58, [-.15, -.27, -.10], [-.12, .22, .11]],
       [2.18, SUPPORT, SUPPORT_GRIP],
     ],
   },
@@ -119,7 +119,14 @@ export class Pistol {
   constructor(reducedMotion) {
     this.audio = new PistolAudio();
     this.reducedMotion = reducedMotion;
-    this.root = new THREE.Group();
+    this.camera = new THREE.PerspectiveCamera(56, 1, .035, 8);
+    this.scene = new THREE.Scene();
+    const fill = new THREE.HemisphereLight(0xe4eddd, 0x676d53, 2.4);
+    const key = new THREE.DirectionalLight(0xffe0aa, 2.5);
+    key.position.set(-2, 4, 2);
+    const edge = new THREE.DirectionalLight(0xd7e6ff, 1.7);
+    edge.position.set(2.5, 2, -3.2);
+    this.scene.add(fill, key, edge);
 
     const { body, upper, magazine } = createPistolModel();
     this.worldModel = body.clone(true);
@@ -130,33 +137,31 @@ export class Pistol {
     this.flash = muzzleFlash();
     this.arms = createViewmodelArms();
     const { rightHand, leftHand, rightSleeve, leftSleeve } = this.arms;
-    pose(rightHand, [.045, -.226, .161], [.13, -.07, .04]);
-    rightHand.scale.setScalar(1.10);
-    leftHand.scale.setScalar(1.14);
-    rightSleeve.scale.set(1.29, 1, 1.29);
-    leftSleeve.scale.copy(rightSleeve.scale);
+    pose(rightHand, [.052, -.229, .137], [.14, -.26, .09]);
     this.viewmodel.add(rightHand, leftHand, this.flash);
-    this.root.add(this.viewmodel, rightSleeve, leftSleeve);
-    this.rightElbow = new THREE.Vector3(.55, -.66, -.52);
-    this.leftElbow = new THREE.Vector3(-.16, -.68, -.54);
+    this.scene.add(this.viewmodel, rightSleeve, leftSleeve);
+    this.rightElbow = new THREE.Vector3(.59, -.73, -.48);
+    this.leftElbow = new THREE.Vector3(-.21, -.75, -.50);
     this.wrist = new THREE.Vector3();
+    this.armDirection = new THREE.Vector3();
     this.capacity = CAPACITY;
     this.reset();
   }
 
   reset() {
     this.ammo = this.capacity;
-    this.cancelAction();
+    this.action = null;
+    this.elapsed = 0;
+    this.shotAge = 1;
+    this.cooldown = 0;
     this.stride = 0;
     this.sprint = 0;
     this.update(0, 0);
   }
 
-  cancelAction() {
-    this.action = null;
-    this.elapsed = 0;
-    this.shotAge = 1;
-    this.cooldown = 0;
+  resize(aspect) {
+    this.camera.aspect = aspect;
+    this.camera.updateProjectionMatrix();
   }
 
   fire() {
@@ -177,7 +182,7 @@ export class Pistol {
     this.elapsed = 0;
   }
 
-  update(delta, speed, aspect = 1.38) {
+  update(delta, speed) {
     this.cooldown = Math.max(0, this.cooldown - delta);
     const animation = ACTIONS[this.action];
     if (animation) {
@@ -216,7 +221,7 @@ export class Pistol {
       this.viewmodel.position.y -= this.sprint * .10;
       this.viewmodel.rotation.x -= this.sprint * .24;
     }
-    this.viewmodel.position.x *= THREE.MathUtils.clamp(aspect / 1.38, .6, 1.15);
+    this.viewmodel.position.x *= THREE.MathUtils.clamp(this.camera.aspect / 1.38, .6, 1.15);
 
     const recoil = this.shotAge < .25 ? Math.exp(-this.shotAge * 19) : 0;
     const kick = recoil * (this.reducedMotion ? .3 : 1);
@@ -226,8 +231,18 @@ export class Pistol {
     this.flash.visible = !this.reducedMotion && this.shotAge < .045;
     this.shotAge += delta;
 
+    this.viewmodel.updateMatrixWorld(true);
     const { rightSleeve, rightHand, leftSleeve, leftHand } = this.arms;
-    alignSleeve(rightSleeve, this.rightElbow, rightHand, this.wrist.set(0, -.093, .050));
-    alignSleeve(leftSleeve, this.leftElbow, leftHand, this.wrist.set(0, -.093, .050));
+    this.updateSleeve(rightSleeve, this.rightElbow, rightHand);
+    this.updateSleeve(leftSleeve, this.leftElbow, leftHand);
+  }
+
+  updateSleeve(sleeve, elbow, hand) {
+    this.wrist.set(0, -.093, .050);
+    hand.localToWorld(this.wrist);
+    this.armDirection.copy(this.wrist).sub(elbow);
+    sleeve.position.copy(elbow).lerp(this.wrist, .5);
+    sleeve.scale.y = this.armDirection.length();
+    sleeve.quaternion.setFromUnitVectors(UP, this.armDirection.normalize());
   }
 }

@@ -1,9 +1,7 @@
 import * as THREE from 'three';
-import { DebugPanel } from './debug-panel.js';
-import { Inventory } from './inventory.js';
 import { loadModels } from './models.js';
+import { Pistol } from './pistol.js';
 import { FirstPersonCamera, Player } from './player.js';
-import { THIRD_PERSON_MAX_PITCH, THIRD_PERSON_MIN_PITCH, ThirdPersonCamera } from './third-person-camera.js';
 import { createWorld } from './world.js';
 
 const element = (id) => document.getElementById(id);
@@ -14,12 +12,14 @@ const play = element('play');
 const restart = element('restart');
 const startupError = element('startup-error');
 
-const SLOT_KEYS = new Map([['Digit1', 1], ['Digit2', 2]]);
+<<<<<<< HEAD
+const SLOT_KEYS = new Map([['Digit1', 1], ['Digit2', 2], ['Digit3', 3]]);
+=======
+>>>>>>> parent of 084d75d (f)
 const GAME_KEYS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD', 'ShiftLeft', 'ShiftRight', 'Space', 'KeyE',
   'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-  'KeyF', 'KeyR', 'KeyV', 'F2',
-  ...SLOT_KEYS.keys(),
+  'KeyF', 'KeyR',
 ]);
 const FIXED_STEP = 1 / 120;
 const CARDINALS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -52,10 +52,8 @@ function runGame(renderer) {
   world.scene.add(player.root);
 
   const view = new FirstPersonCamera(1);
-  const thirdPerson = new ThirdPersonCamera(1);
-  let gameplayCamera = view.camera;
-  const inventory = new Inventory(view.reducedMotion);
-  const debugPanel = new DebugPanel(element('debug-panel'));
+  const pistol = new Pistol(view.reducedMotion);
+  player.setHeldItem(pistol.worldModel);
   const menuCamera = new THREE.PerspectiveCamera(55, 1, .05, 215);
   menuCamera.position.set(-11.4, 4.6, 19.1);
   menuCamera.lookAt(5.6, 2.3, -11);
@@ -86,47 +84,30 @@ function runGame(renderer) {
   const bearing = element('bearing');
   const compassLeft = element('compass-left');
   const compassRight = element('compass-right');
-  const cameraMode = element('camera-mode');
   const freeLookHint = element('free-look-hint');
   const pistolAmmo = element('pistol-ammo');
-  const pistolCounter = element('pistol-counter');
-  const equipmentStatus = element('equipment-status');
-  const slotRows = [...element('inventory-slots').children];
-  element('pistol-capacity').textContent = `/ ${inventory.pistol.capacity}`;
+  const pistolStatus = element('pistol-status');
+  element('pistol-capacity').textContent = `/ ${pistol.capacity}`;
 
   function resize() {
     const { clientWidth: width, clientHeight: height } = canvas;
     const aspect = width / Math.max(1, height);
     renderer.setPixelRatio(Math.min(devicePixelRatio, 1.65));
     renderer.setSize(width, height, false);
-    for (const camera of [view.camera, thirdPerson.camera, menuCamera]) {
+    for (const camera of [view.camera, menuCamera]) {
       camera.aspect = aspect;
       camera.updateProjectionMatrix();
     }
-    inventory.resize(aspect);
+    pistol.resize(aspect);
     needsRender = true;
   }
 
-  function updateEquipmentStatus() {
-    const { pistol, action, isPistol } = inventory;
+  function updatePistolHUD() {
     const ammo = String(pistol.ammo).padStart(2, '0');
-    const status = action === 'reload' ? 'Reloading' :
-      action === 'inspect' ? 'Inspecting' : isPistol && pistol.ammo === 0 ? 'Empty · R to reload' : '';
+    const status = pistol.action === 'reload' ? 'Reloading' :
+      pistol.action === 'inspect' ? 'Inspecting' : pistol.ammo === 0 ? 'Empty · R to reload' : '';
     if (pistolAmmo.textContent !== ammo) pistolAmmo.textContent = ammo;
-    if (equipmentStatus.textContent !== status) equipmentStatus.textContent = status;
-  }
-
-  function showEquippedItem() {
-    player.setHeldItem(inventory.heldItem);
-    for (const row of slotRows) {
-      if (Number(row.dataset.slot) === inventory.slot) {
-        row.setAttribute('aria-current', 'true');
-      } else {
-        row.removeAttribute('aria-current');
-      }
-    }
-    pistolCounter.hidden = !inventory.isPistol;
-    updateEquipmentStatus();
+    if (pistolStatus.textContent !== status) pistolStatus.textContent = status;
   }
 
   function updateObjectives() {
@@ -146,12 +127,11 @@ function runGame(renderer) {
 
   function reset() {
     player.reset();
-    inventory.reset();
-    showEquippedItem();
+    pistol.reset();
+    updatePistolHUD();
     input.yaw = player.yaw;
     pitch = -.035;
     view.reset(player, pitch);
-    thirdPerson.update(player, input.yaw, pitch, world.solids, 0, true);
     for (const relay of world.relays) relay.setActive(false);
     updateObjectives();
     notification.textContent = '';
@@ -182,8 +162,7 @@ function runGame(renderer) {
 
   function begin() {
     mode = 'playing';
-    debugPanel.resetTiming();
-    inventory.pistol.audio.unlock();
+    pistol.audio.unlock();
     menu.hidden = true;
     hud.hidden = false;
     document.activeElement?.blur();
@@ -198,23 +177,7 @@ function runGame(renderer) {
 
   function look(horizontal, vertical) {
     input.yaw = THREE.MathUtils.euclideanModulo(input.yaw - horizontal + Math.PI, 2 * Math.PI) - Math.PI;
-    const orbiting = gameplayCamera === thirdPerson.camera;
-    pitch = THREE.MathUtils.clamp(pitch - vertical,
-      orbiting ? THIRD_PERSON_MIN_PITCH : -1.43, orbiting ? THIRD_PERSON_MAX_PITCH : 1.43);
-  }
-
-  function toggleCamera() {
-    if (gameplayCamera === view.camera) {
-      pitch = THREE.MathUtils.clamp(pitch, THIRD_PERSON_MIN_PITCH, THIRD_PERSON_MAX_PITCH);
-      thirdPerson.update(player, input.yaw, pitch, world.solids, 0, true);
-      gameplayCamera = thirdPerson.camera;
-      cameraMode.textContent = 'Third person';
-      reticle.hidden = true;
-    } else {
-      gameplayCamera = view.camera;
-      cameraMode.textContent = 'First person';
-      reticle.hidden = false;
-    }
+    pitch = THREE.MathUtils.clamp(pitch - vertical, -1.43, 1.43);
   }
 
   function nearbyRelay() {
@@ -251,8 +214,7 @@ function runGame(renderer) {
   }
 
   function updateHUD(now) {
-    const yaw = gameplayCamera === thirdPerson.camera ? thirdPerson.yaw : input.yaw;
-    const heading = THREE.MathUtils.euclideanModulo(-THREE.MathUtils.radToDeg(yaw), 360);
+    const heading = THREE.MathUtils.euclideanModulo(-THREE.MathUtils.radToDeg(player.yaw), 360);
     const sector = Math.round(heading / 45) % 8;
     const headingText = `${Math.round(heading) % 360}°`;
     if (bearing.textContent !== headingText) bearing.textContent = headingText;
@@ -261,15 +223,15 @@ function runGame(renderer) {
     if (compassLeft.textContent !== left) compassLeft.textContent = left;
     if (compassRight.textContent !== right) compassRight.textContent = right;
 
-    gameplayCamera.updateMatrixWorld();
-    gameplayCamera.getWorldDirection(aim);
+    view.camera.updateMatrixWorld();
+    view.camera.getWorldDirection(aim);
     for (const { relay, marker } of relayUI) {
-      offset.copy(relay.marker).sub(gameplayCamera.position);
+      offset.copy(relay.marker).sub(view.camera.position);
       if (relay.active || offset.dot(aim) <= 0) {
         marker.hidden = true;
         continue;
       }
-      projected.copy(relay.marker).project(gameplayCamera);
+      projected.copy(relay.marker).project(view.camera);
       marker.hidden = Math.abs(projected.x) > .91 || Math.abs(projected.y) > .83;
       if (!marker.hidden) {
         marker.style.left = `${(projected.x + 1) * 50}%`;
@@ -283,7 +245,7 @@ function runGame(renderer) {
     const relay = nearbyRelay();
     prompt.hidden = !relay;
     reticle.classList.toggle('ready', Boolean(relay));
-    reticle.classList.toggle('dimmed', Boolean(inventory.action) && !relay);
+    reticle.classList.toggle('dimmed', Boolean(pistol.action) && !relay);
     if (relay) promptLabel.textContent = `Activate ${relay.label.toLowerCase()} relay`;
     if (notificationUntil && now > notificationUntil) {
       notification.textContent = '';
@@ -295,7 +257,6 @@ function runGame(renderer) {
     const delta = Math.min(Math.max(0, (now - previousTime) / 1000), .075);
     previousTime = now;
     if (mode === 'playing') {
-      const orbiting = gameplayCamera === thirdPerson.camera;
       const sideLook = Number(keys.has('ArrowRight')) - Number(keys.has('ArrowLeft'));
       const upLook = Number(keys.has('ArrowDown')) - Number(keys.has('ArrowUp'));
       if (sideLook || upLook) look(sideLook * delta * 1.65, upLook * delta * 1.25);
@@ -307,23 +268,21 @@ function runGame(renderer) {
       while (accumulator >= FIXED_STEP) {
         input.jump = jumpQueued;
         jumpQueued = false;
-        player.step(FIXED_STEP, input, world.solids, orbiting ? thirdPerson.yaw : null);
+        player.step(FIXED_STEP, input, world.solids);
         accumulator -= FIXED_STEP;
       }
       if (player.position.y < -8) reset();
-      if (orbiting) thirdPerson.update(player, input.yaw, pitch, world.solids, delta);
-      view.update(player, pitch, delta, orbiting ? thirdPerson.yaw : input.yaw);
-      inventory.update(delta, player.speed);
-      updateEquipmentStatus();
+      view.update(player, pitch, delta);
+      pistol.update(delta, player.speed);
+      updatePistolHUD();
       updateHUD(now);
-      debugPanel.update(now, player, orbiting);
     }
     if (mode === 'playing' || needsRender) {
-      renderer.render(world.scene, mode === 'menu' ? menuCamera : gameplayCamera);
-      if (mode !== 'menu' && gameplayCamera === view.camera) {
+      renderer.render(world.scene, mode === 'menu' ? menuCamera : view.camera);
+      if (mode !== 'menu') {
         renderer.autoClear = false;
         renderer.clearDepth();
-        renderer.render(inventory.scene, inventory.camera);
+        renderer.render(pistol.scene, pistol.camera);
         renderer.autoClear = true;
       }
       needsRender = false;
@@ -356,19 +315,15 @@ function runGame(renderer) {
     if (event.repeat) return;
     if (event.code === 'Space') jumpQueued = true;
     if (event.code === 'KeyE') activateRelay();
-    if (event.code === 'KeyR') inventory.reload();
-    if (event.code === 'KeyF') inventory.inspect();
-    if (event.code === 'KeyV') toggleCamera();
-    if (event.code === 'F2') debugPanel.toggle();
-    const slot = SLOT_KEYS.get(event.code);
-    if (slot && inventory.select(slot)) showEquippedItem();
+    if (event.code === 'KeyR') pistol.begin('reload');
+    if (event.code === 'KeyF') pistol.begin('inspect');
   });
   document.addEventListener('keyup', (event) => keys.delete(event.code));
   document.addEventListener('mousemove', (event) => {
     if (mode === 'playing' && locked) look(event.movementX * .0023, event.movementY * .0023);
   });
   document.addEventListener('mousedown', (event) => {
-    if (mode === 'playing' && locked && event.button === 0) inventory.fire();
+    if (mode === 'playing' && locked && event.button === 0) pistol.fire();
   });
   canvas.addEventListener('pointerdown', (event) => {
     if (mode !== 'playing' || locked || event.button !== 0) return;
@@ -388,7 +343,7 @@ function runGame(renderer) {
   canvas.addEventListener('pointerup', (event) => {
     if (mode === 'playing' && !locked && event.button === 0 && event.pointerType === 'mouse' &&
         event.pointerId === dragPointer?.id && !dragPointer.moved) {
-      inventory.fire();
+      pistol.fire();
     }
   });
   canvas.addEventListener('lostpointercapture', () => { dragPointer = null; });
