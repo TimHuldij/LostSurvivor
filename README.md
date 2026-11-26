@@ -19,6 +19,7 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080) in a desktop browser with We
 | Space | Jump |
 | E | Activate a nearby relay while facing its panel |
 <<<<<<< HEAD
+<<<<<<< HEAD
 | 1 | Equip hands |
 | 2 | Equip the Glock |
 | 3 | Equip the longsword |
@@ -32,6 +33,11 @@ Open [http://127.0.0.1:8080](http://127.0.0.1:8080) in a desktop browser with We
 | R | Reload |
 | F | Inspect |
 >>>>>>> parent of 084d75d (f)
+=======
+| Left click | Fire the G19 |
+| R | Reload |
+| F | Inspect |
+>>>>>>> parent of 084d75d (f)
 | Esc | Pause |
 
 If the browser blocks mouse capture, drag on the game or use the arrow keys to look. Use **Restart** from the pause screen to reset the yard.
@@ -39,7 +45,11 @@ If the browser blocks mouse capture, drag on the game or use the arrow keys to l
 ## Game models
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 The armored soldier, longsword, Glock, and first-person gauntlets are built in JavaScript. The playtest starts with hands equipped. The pistol has a one-handed inspect animation and a reload animation with synchronized sound cues. Switching away from the pistol during reload cancels that reload and preserves its ammo count. Sound effects are synthesized in the browser.
+=======
+The full-body survivor, G19, and first-person arms are built in JavaScript. The arms use a two-handed grip, woven sleeves, and padded gloves. The pistol has a reload animation with synchronized sound cues and a separate inspect animation. Sound effects are synthesized in the browser.
+>>>>>>> parent of 084d75d (f)
 =======
 The full-body survivor, G19, and first-person arms are built in JavaScript. The arms use a two-handed grip, woven sleeves, and padded gloves. The pistol has a reload animation with synchronized sound cues and a separate inspect animation. Sound effects are synthesized in the browser.
 >>>>>>> parent of 084d75d (f)
@@ -74,7 +84,11 @@ Player height defaults to 1.76 meters. Its mesh is centered at the feet, and `ya
 ## Camera and character
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 [src/player.js](src/player.js) holds the persistent player body, collision, and movement state. In third person, the mouse orbits a follow camera, and the character turns in the direction of camera-relative movement. The camera keeps its focus near the character and pulls in around solid objects. The equipped longsword or Glock attaches to the body's `ItemSocket`. An imported body can provide its own node named `ItemSocket`.
+=======
+[src/player.js](src/player.js) holds the persistent player body, collision, and movement state. The first-person camera leaves the body render layer out of view. The pistol attaches to the body's `ItemSocket`, which a future third-person camera can render along with `PLAYER_BODY_LAYER`. An imported body can provide its own node named `ItemSocket`.
+>>>>>>> parent of 084d75d (f)
 =======
 [src/player.js](src/player.js) holds the persistent player body, collision, and movement state. The first-person camera leaves the body render layer out of view. The pistol attaches to the body's `ItemSocket`, which a future third-person camera can render along with `PLAYER_BODY_LAYER`. An imported body can provide its own node named `ItemSocket`.
 >>>>>>> parent of 084d75d (f)

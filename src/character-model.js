@@ -3,6 +3,7 @@ import { armorMaterials } from './armor-materials.js';
 import { armorTrim, curvedPart, roundedPart } from './model-geometry.js';
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 export const THIGH_LENGTH = .417;
 export const SHIN_LENGTH = .391;
 export const HIP_HEIGHT = .869;
@@ -128,6 +129,8 @@ export function createSurvivorBody() {
   addCape(upperBody, armor.cloth);
   addHelmet(upperBody, armor);
 =======
+=======
+>>>>>>> parent of 084d75d (f)
 export function createSurvivorBody() {
   const body = new THREE.Group();
   body.name = 'Relay yard survivor';
@@ -154,11 +157,15 @@ export function createSurvivorBody() {
     roundedPart(body, rubber, [.059, .137, .132], [side * .146, 1.578, .007], .024);
   }
   roundedPart(body, trim, [.10, .035, .012], [-.07, 1.259, -.199], .004);
+<<<<<<< HEAD
+>>>>>>> parent of 084d75d (f)
+=======
 >>>>>>> parent of 084d75d (f)
 
   const limbs = [];
   for (const side of [-1, 1]) {
     const leg = new THREE.Group();
+<<<<<<< HEAD
 <<<<<<< HEAD
     leg.position.set(side * .115, HIP_HEIGHT, 0);
     roundedPart(leg, armor.mail, [.181, .451, .194], [0, -.201, 0], .051);
@@ -221,19 +228,37 @@ export function createSurvivorBody() {
     body.add(leg);
 
     const arm = new THREE.Group();
+=======
+    leg.position.set(side * .111, .869, 0);
+    roundedPart(leg, nylon, [.186, .46, .202], [0, -.207, .003], .045);
+    roundedPart(leg, nylon, [.158, .32, .171], [0, -.551, .019], .038);
+    roundedPart(leg, rubber, [.131, .125, .077], [0, -.40, -.086], .025);
+    roundedPart(leg, rubber, [.182, .18, .27], [0, -.756, -.037], .033);
+    roundedPart(leg, canvas, [.184, .041, .272], [0, -.84, -.037], .008);
+    body.add(leg);
+
+    const arm = new THREE.Group();
+>>>>>>> parent of 084d75d (f)
     arm.position.set(side * .26, 1.34, 0);
     roundedPart(arm, cloth, [.177, .263, .182], [side * .019, -.113, .007], .055);
     roundedPart(arm, cloth, [.133, .231, .154], [side * .029, -.34, -.049], .039).rotation.x = .29;
     roundedPart(arm, rubber, [.124, .149, .146], [side * .03, -.475, -.088], .034);
     body.add(arm);
     limbs.push({ leg, arm, side });
+<<<<<<< HEAD
+>>>>>>> parent of 084d75d (f)
+=======
 >>>>>>> parent of 084d75d (f)
 
     if (side === 1) {
       const socket = new THREE.Group();
       socket.name = 'ItemSocket';
 <<<<<<< HEAD
+<<<<<<< HEAD
       socket.position.set(.005, -.198, -.073);
+=======
+      socket.position.set(.020, -.41, -.117);
+>>>>>>> parent of 084d75d (f)
 =======
       socket.position.set(.020, -.41, -.117);
 >>>>>>> parent of 084d75d (f)

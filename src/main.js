@@ -13,7 +13,10 @@ const restart = element('restart');
 const startupError = element('startup-error');
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 const SLOT_KEYS = new Map([['Digit1', 1], ['Digit2', 2], ['Digit3', 3]]);
+=======
+>>>>>>> parent of 084d75d (f)
 =======
 >>>>>>> parent of 084d75d (f)
 const GAME_KEYS = new Set([

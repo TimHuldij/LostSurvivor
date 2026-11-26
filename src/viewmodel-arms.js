@@ -16,6 +16,7 @@ function tubeAlong(parent, material, points, radius) {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 function profileGeometry(profile) {
   return new THREE.LatheGeometry(profile.map(([radius, y]) => new THREE.Vector2(radius, y)), 24);
 }
@@ -41,6 +42,8 @@ export function createViewmodelArms(pistolGrip = true) {
       plate.rotation.y = side * .34;
     }
 =======
+=======
+>>>>>>> parent of 084d75d (f)
 function makeClothTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 128;
@@ -83,6 +86,9 @@ export function createViewmodelArms() {
     wrist.position.y = .433;
     wrist.scale.z = .89;
     arm.add(wrist);
+<<<<<<< HEAD
+>>>>>>> parent of 084d75d (f)
+=======
 >>>>>>> parent of 084d75d (f)
 
     for (const xOffset of [-.013, .013]) {
@@ -92,7 +98,11 @@ export function createViewmodelArms() {
         return [x, y, z];
       });
 <<<<<<< HEAD
+<<<<<<< HEAD
       tubeAlong(arm, darkSteel, points, .0017);
+=======
+      tubeAlong(arm, seam, points, .0016);
+>>>>>>> parent of 084d75d (f)
 =======
       tubeAlong(arm, seam, points, .0016);
 >>>>>>> parent of 084d75d (f)
@@ -107,6 +117,7 @@ export function createViewmodelArms() {
   function glove(side) {
     const hand = new THREE.Group();
 <<<<<<< HEAD
+<<<<<<< HEAD
     const grippingHand = side > 0;
     roundedPart(hand, leather, [.098, .130, .115], [0, .002, .024], .038);
     const back = roundedPart(hand, steel, [.023, .109, .092], [side * .041, -.004, .024], .011);
@@ -117,11 +128,16 @@ export function createViewmodelArms() {
       [side * .041, -.094, .094], [side * .051, -.094, .070], [side * .048, -.094, .016],
     ], .0018);
 =======
+=======
+>>>>>>> parent of 084d75d (f)
     roundedPart(hand, leather, [.101, .129, .113], [0, .006, .027], .033);
     roundedPart(hand, insert, [.028, .096, .087], [side * .039, .009, .029], .012);
     roundedPart(hand, leather, [.093, .092, .093], [-side * .004, -.077, .045], .024);
     roundedPart(hand, webbing, [.104, .034, .103], [-side * .004, -.093, .045], .013);
     roundedPart(hand, piping, [.011, .020, .042], [side * .048, -.092, .046], .004);
+<<<<<<< HEAD
+>>>>>>> parent of 084d75d (f)
+=======
 >>>>>>> parent of 084d75d (f)
 
     for (let finger = 0; finger < 4; finger++) {
@@ -129,6 +145,7 @@ export function createViewmodelArms() {
       const length = [.073, .080, .074, .060][finger];
       const last = [-side * .028, y - .008, -length];
       tubeAlong(hand, leather, [
+<<<<<<< HEAD
 <<<<<<< HEAD
         [side * .030, y, .015],
         [side * .038, y, -length * .68],
@@ -152,12 +169,23 @@ export function createViewmodelArms() {
       hand.add(tip);
       const pad = roundedPart(hand, armor, [.018, .024, .040], [side * .044, y, -.016], .008);
 >>>>>>> parent of 084d75d (f)
+=======
+        [side * .024, y, -.015],
+        [side * .015, y, -length * .72],
+        last,
+      ], .017);
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(.017, 12, 8), leather);
+      tip.position.set(...last);
+      hand.add(tip);
+      const pad = roundedPart(hand, armor, [.018, .024, .040], [side * .044, y, -.016], .008);
+>>>>>>> parent of 084d75d (f)
       pad.rotation.y = side * .19;
     }
 
     tubeAlong(hand, insert, [
       [-side * .033, .025, .046], [-side * .050, .054, .008], [-side * .031, .071, -.029],
     ], .022);
+<<<<<<< HEAD
 <<<<<<< HEAD
     tubeAlong(hand, darkSteel, [
       [-side * .064, .072, .035], [-side * .078, .089, .018], [-side * .082, .092, .002],
@@ -212,6 +240,12 @@ export function createViewmodelArms() {
 
   const right = pistolGrip ? { hand: glove(1) } : articulatedGlove(1);
   const left = pistolGrip ? { hand: glove(-1) } : articulatedGlove(-1);
+=======
+    roundedPart(hand, insert, [.029, .035, .031], [-side * .031, .069, -.030], .014);
+    return hand;
+  }
+
+>>>>>>> parent of 084d75d (f)
 =======
     roundedPart(hand, insert, [.029, .035, .031], [-side * .031, .069, -.030], .014);
     return hand;
